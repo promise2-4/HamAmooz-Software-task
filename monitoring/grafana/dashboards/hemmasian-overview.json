@@ -3,22 +3,36 @@
   "editable": true,
   "graphTooltip": 1,
   "panels": [
-    {"type":"stat","title":"Backend up","id":1,"gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"up{job=\"django\"}","refId":"A"}]},
-    {"type":"stat","title":"Redis up","id":2,"gridPos":{"h":4,"w":6,"x":6,"y":0},"targets":[{"expr":"redis_up","refId":"A"}]},
-    {"type":"stat","title":"Running containers","id":3,"gridPos":{"h":4,"w":6,"x":12,"y":0},"targets":[{"expr":"count(container_last_seen{name!=\"\"})","refId":"A"}]},
-    {"type":"stat","title":"Redis memory","id":4,"gridPos":{"h":4,"w":6,"x":18,"y":0},"targets":[{"expr":"redis_memory_used_bytes","refId":"A"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}},
-    {"type":"timeseries","title":"Django request rate","id":5,"gridPos":{"h":8,"w":12,"x":0,"y":4},"targets":[{"expr":"sum(rate(django_http_requests_total_by_method_total[5m])) by (method)","legendFormat":"{{method}}","refId":"A"}]},
-    {"type":"timeseries","title":"Container CPU","id":6,"gridPos":{"h":8,"w":12,"x":12,"y":4},"targets":[{"expr":"sum(rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])) by (name)","legendFormat":"{{name}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"cores"},"overrides":[]}},
-    {"type":"timeseries","title":"Container memory","id":7,"gridPos":{"h":8,"w":12,"x":0,"y":12},"targets":[{"expr":"container_memory_working_set_bytes{name!=\"\"}","legendFormat":"{{name}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}},
-    {"type":"timeseries","title":"Redis operations","id":8,"gridPos":{"h":8,"w":12,"x":12,"y":12},"targets":[{"expr":"rate(redis_commands_processed_total[5m])","legendFormat":"commands/sec","refId":"A"}]}
+    {"type":"stat","title":"Backend Up","description":"Django Prometheus scrape health","id":1,"gridPos":{"h":4,"w":4,"x":0,"y":0},"targets":[{"expr":"up{job=\"django\"}","refId":"A"}],"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}]},"overrides":[]}},
+    {"type":"stat","title":"Redis Up","description":"Redis exporter target health","id":2,"gridPos":{"h":4,"w":4,"x":4,"y":0},"targets":[{"expr":"redis_up","refId":"A"}],"fieldConfig":{"defaults":{"mappings":[{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}]},"overrides":[]}},
+    {"type":"stat","title":"Requests / second","id":3,"gridPos":{"h":4,"w":4,"x":8,"y":0},"targets":[{"expr":"sum(rate(django_http_requests_total_by_method_total[5m]))","refId":"A"}],"fieldConfig":{"defaults":{"unit":"reqps"},"overrides":[]}},
+    {"type":"stat","title":"API p95 latency","id":4,"gridPos":{"h":4,"w":4,"x":12,"y":0},"targets":[{"expr":"histogram_quantile(0.95, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))","refId":"A"}],"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]}},
+    {"type":"stat","title":"Redis clients","id":5,"gridPos":{"h":4,"w":4,"x":16,"y":0},"targets":[{"expr":"redis_connected_clients","refId":"A"}]},
+    {"type":"stat","title":"Redis memory","id":6,"gridPos":{"h":4,"w":4,"x":20,"y":0},"targets":[{"expr":"redis_memory_used_bytes","refId":"A"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}},
+
+    {"type":"timeseries","title":"Django request rate by method","id":7,"gridPos":{"h":8,"w":12,"x":0,"y":4},"targets":[{"expr":"sum(rate(django_http_requests_total_by_method_total[5m])) by (method)","legendFormat":"{{method}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"reqps"},"overrides":[]}},
+    {"type":"timeseries","title":"HTTP responses by status","id":8,"gridPos":{"h":8,"w":12,"x":12,"y":4},"targets":[{"expr":"sum(rate(django_http_responses_total_by_status_total[5m])) by (status)","legendFormat":"HTTP {{status}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"reqps"},"overrides":[]}},
+
+    {"type":"timeseries","title":"Django latency percentiles","id":9,"gridPos":{"h":8,"w":12,"x":0,"y":12},"targets":[{"expr":"histogram_quantile(0.50, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))","legendFormat":"p50","refId":"A"},{"expr":"histogram_quantile(0.95, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))","legendFormat":"p95","refId":"B"},{"expr":"histogram_quantile(0.99, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))","legendFormat":"p99","refId":"C"}],"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]}},
+    {"type":"timeseries","title":"Django process resources","id":10,"gridPos":{"h":8,"w":12,"x":12,"y":12},"targets":[{"expr":"process_resident_memory_bytes{job=\"django\"}","legendFormat":"memory","refId":"A"},{"expr":"rate(process_cpu_seconds_total{job=\"django\"}[5m]) * 100","legendFormat":"CPU %","refId":"B"}],"fieldConfig":{"defaults":{},"overrides":[{"matcher":{"id":"byName","options":"memory"},"properties":[{"id":"unit","value":"bytes"}]},{"matcher":{"id":"byName","options":"CPU %"},"properties":[{"id":"unit","value":"percent"}]}]}},
+
+    {"type":"timeseries","title":"Database model operations","id":11,"gridPos":{"h":8,"w":12,"x":0,"y":20},"targets":[{"expr":"sum(rate(django_model_inserts_total[5m]))","legendFormat":"inserts/sec","refId":"A"},{"expr":"sum(rate(django_model_updates_total[5m]))","legendFormat":"updates/sec","refId":"B"},{"expr":"sum(rate(django_model_deletes_total[5m]))","legendFormat":"deletes/sec","refId":"C"}]},
+    {"type":"timeseries","title":"Python garbage collection","id":12,"gridPos":{"h":8,"w":12,"x":12,"y":20},"targets":[{"expr":"rate(python_gc_collections_total{job=\"django\"}[5m])","legendFormat":"generation {{generation}}","refId":"A"}]},
+
+    {"type":"timeseries","title":"Redis commands","id":13,"gridPos":{"h":8,"w":8,"x":0,"y":28},"targets":[{"expr":"rate(redis_commands_processed_total[5m])","legendFormat":"processed/sec","refId":"A"},{"expr":"sum(rate(redis_commands_failed_calls_total[5m]))","legendFormat":"failed/sec","refId":"B"}]},
+    {"type":"timeseries","title":"Redis keyspace","id":14,"gridPos":{"h":8,"w":8,"x":8,"y":28},"targets":[{"expr":"rate(redis_keyspace_hits_total[5m])","legendFormat":"hits/sec","refId":"A"},{"expr":"rate(redis_keyspace_misses_total[5m])","legendFormat":"misses/sec","refId":"B"},{"expr":"sum(redis_db_keys)","legendFormat":"keys","refId":"C"}]},
+    {"type":"timeseries","title":"Redis network traffic","id":15,"gridPos":{"h":8,"w":8,"x":16,"y":28},"targets":[{"expr":"rate(redis_net_input_bytes_total[5m])","legendFormat":"received","refId":"A"},{"expr":"rate(redis_net_output_bytes_total[5m])","legendFormat":"sent","refId":"B"}],"fieldConfig":{"defaults":{"unit":"Bps"},"overrides":[]}},
+
+    {"type":"timeseries","title":"Docker VM CPU","description":"Aggregate cgroup usage. Use docker stats for safe per-container detail on Docker Desktop.","id":16,"gridPos":{"h":8,"w":12,"x":0,"y":36},"targets":[{"expr":"rate(container_cpu_usage_seconds_total{id=\"/\"}[5m])","legendFormat":"Docker VM","refId":"A"}],"fieldConfig":{"defaults":{"unit":"cores"},"overrides":[]}},
+    {"type":"timeseries","title":"Docker VM memory","description":"Aggregate cgroup working-set memory.","id":17,"gridPos":{"h":8,"w":12,"x":12,"y":36},"targets":[{"expr":"container_memory_working_set_bytes{id=\"/\"}","legendFormat":"Docker VM","refId":"A"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}}
   ],
   "refresh":"15s",
   "schemaVersion":41,
-  "tags":["hemmasian","django","docker"],
+  "tags":["hemmasian","django","redis","docker"],
   "templating":{"list":[]},
   "time":{"from":"now-1h","to":"now"},
   "timezone":"browser",
   "title":"Hemmasian Overview",
   "uid":"hemmasian-overview",
-  "version":1
+  "version":2
 }

@@ -55,9 +55,11 @@ docker compose down -v
 
 ## Monitoring
 
-Prometheus collects Django request/process metrics, Redis metrics, Docker container CPU/memory metrics through cAdvisor, and its own metrics. Grafana is provisioned automatically with the Prometheus datasource and the **Hemmasian Overview** dashboard.
+Prometheus collects Django request/process metrics, Redis metrics, aggregate Docker VM CPU/memory metrics through cAdvisor, and its own metrics. Grafana is provisioned automatically with the Prometheus datasource and the **Hemmasian Overview** dashboard.
 
-Prometheus retention is limited to three days or 1 GB, and each service has a memory limit. Target health is available at <http://localhost:9090/targets>. On Docker Desktop, cAdvisor observes containers inside Docker's Linux VM, which is expected.
+Prometheus retention is limited to three days or 1 GB, and each service has a memory limit. Target health is available at <http://localhost:9090/targets>. On Docker Desktop, cAdvisor safely exposes aggregate metrics from Docker's Linux VM. Use `docker stats` when per-container CPU and memory detail is needed without granting a monitoring container access to the Docker socket.
+
+Raw Django metrics are available at <http://localhost:8000/metrics>. To discover and test metrics in Prometheus, open <http://localhost:9090/graph> and try names such as `django_http_requests_total_by_method_total`, `process_resident_memory_bytes`, `redis_connected_clients`, and `redis_memory_used_bytes`.
 
 ## API routes
 
