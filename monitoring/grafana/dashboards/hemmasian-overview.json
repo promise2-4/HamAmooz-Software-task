@@ -1,0 +1,24 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {"type":"stat","title":"Backend up","id":1,"gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"up{job=\"django\"}","refId":"A"}]},
+    {"type":"stat","title":"Redis up","id":2,"gridPos":{"h":4,"w":6,"x":6,"y":0},"targets":[{"expr":"redis_up","refId":"A"}]},
+    {"type":"stat","title":"Running containers","id":3,"gridPos":{"h":4,"w":6,"x":12,"y":0},"targets":[{"expr":"count(container_last_seen{name!=\"\"})","refId":"A"}]},
+    {"type":"stat","title":"Redis memory","id":4,"gridPos":{"h":4,"w":6,"x":18,"y":0},"targets":[{"expr":"redis_memory_used_bytes","refId":"A"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}},
+    {"type":"timeseries","title":"Django request rate","id":5,"gridPos":{"h":8,"w":12,"x":0,"y":4},"targets":[{"expr":"sum(rate(django_http_requests_total_by_method_total[5m])) by (method)","legendFormat":"{{method}}","refId":"A"}]},
+    {"type":"timeseries","title":"Container CPU","id":6,"gridPos":{"h":8,"w":12,"x":12,"y":4},"targets":[{"expr":"sum(rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])) by (name)","legendFormat":"{{name}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"cores"},"overrides":[]}},
+    {"type":"timeseries","title":"Container memory","id":7,"gridPos":{"h":8,"w":12,"x":0,"y":12},"targets":[{"expr":"container_memory_working_set_bytes{name!=\"\"}","legendFormat":"{{name}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}},
+    {"type":"timeseries","title":"Redis operations","id":8,"gridPos":{"h":8,"w":12,"x":12,"y":12},"targets":[{"expr":"rate(redis_commands_processed_total[5m])","legendFormat":"commands/sec","refId":"A"}]}
+  ],
+  "refresh":"15s",
+  "schemaVersion":41,
+  "tags":["hemmasian","django","docker"],
+  "templating":{"list":[]},
+  "time":{"from":"now-1h","to":"now"},
+  "timezone":"browser",
+  "title":"Hemmasian Overview",
+  "uid":"hemmasian-overview",
+  "version":1
+}

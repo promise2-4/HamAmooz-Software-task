@@ -1,0 +1,168 @@
+name: hemmasian
+
+x-backend-environment: &backend-environment
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-docker-development-secret-change-me}
+  DJANGO_DEBUG: "false"
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend,frontend
+  DATABASE_PATH: /data/db.sqlite3
+  BACKUP_ROOT: /backups
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  KUBERNETES_TOKEN_ENCRYPTION_KEY: ${KUBERNETES_TOKEN_ENCRYPTION_KEY:-g5FKpOvIsoIC3NhxHPq9_Wh-Vy2WQ6P4DU83N8uoFQ=}
+  KUBERNETES_VERIFY_SSL: ${KUBERNETES_VERIFY_SSL:-false}
+
+services:
+  backend:
+    build:
+      context: .
+    image: hemmasian-backend:1.0.0
+    labels:
+      com.hamamooz.component: backend
+      com.hamamooz.version: 1.0.0
+    environment: *backend-environment
+    volumes:
+      - backend-data:/data
+      - backup-data:/backups
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+    mem_limit: 320m
+
+  celery-worker:
+    image: hemmasian-backend:1.0.0
+    labels:
+      com.hamamooz.component: backend-worker
+      com.hamamooz.version: 1.0.0
+    entrypoint: []
+    command: celery -A config worker --loglevel=info --concurrency=1
+    environment: *backend-environment
+    volumes:
+      - backend-data:/data
+      - backup-data:/backups
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 192m
+
+  celery-beat:
+    image: hemmasian-backend:1.0.0
+    labels:
+      com.hamamooz.component: backend-scheduler
+      com.hamamooz.version: 1.0.0
+    entrypoint: []
+    command: celery -A config beat --loglevel=info
+    environment: *backend-environment
+    volumes:
+      - backend-data:/data
+      - backup-data:/backups
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 160m
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes --maxmemory 96mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 128m
+
+  frontend:
+    build:
+      context: ./frontend
+    image: hemmasian-frontend:1.0.0
+    labels:
+      com.hamamooz.component: frontend
+      com.hamamooz.version: 1.0.0
+    ports:
+      - "8000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+    mem_limit: 64m
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 48m
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5
+    privileged: true
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    restart: unless-stopped
+    mem_limit: 128m
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=3d
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256m
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    mem_limit: 192m
+
+volumes:
+  backend-data:
+  backup-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:

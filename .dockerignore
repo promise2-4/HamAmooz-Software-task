@@ -1,0 +1,13 @@
+.git
+.env
+.venv
+__pycache__
+*.py[cod]
+db.sqlite3
+backup_files
+staticfiles
+frontend/node_modules
+frontend/dist
+frontend/*.tsbuildinfo
+k8s
+*.pdf
