@@ -34,6 +34,8 @@ kind: Service
 metadata:
   name: redis-exporter
   namespace: hemmasian
+  labels:
+    observability: hamamooz
 spec:
   selector:
     app: redis-exporter

@@ -8,4 +8,5 @@ celery[redis]>=5.4,<6.0
 django-celery-beat>=2.7,<3.0
 croniter>=6.0,<7.0
 django-prometheus>=2.3,<3.0
+prometheus-client>=0.21,<1.0
 whitenoise>=6.8,<7.0

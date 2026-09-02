@@ -1,0 +1,81 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: hamamooz
+  namespace: monitoring-hamamooz-task
+spec:
+  retentionPeriod: "3d"
+  removePvcAfterDelete: false
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: hamamooz
+  namespace: monitoring-hamamooz-task
+spec:
+  replicaCount: 1
+  selectAllByDefault: false
+  serviceScrapeSelector:
+    matchLabels:
+      pipeline: hamamooz
+  remoteWrite:
+    - url: http://vmsingle-hamamooz.monitoring-hamamooz-task.svc:8428/api/v1/write
+  scrapeInterval: 15s
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vmsingle-hamamooz-nodeport
+  namespace: monitoring-hamamooz-task
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/instance: hamamooz
+    app.kubernetes.io/name: vmsingle
+    managed-by: vm-operator
+  ports:
+    - name: http
+      port: 8428
+      targetPort: 8429
+      nodePort: 30428
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: hamamooz-backend
+  namespace: monitoring-hamamooz-task
+  labels:
+    pipeline: hamamooz
+spec:
+  namespaceSelector:
+    matchNames:
+      - hemmasian
+  selector:
+    matchLabels:
+      observability: hamamooz
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

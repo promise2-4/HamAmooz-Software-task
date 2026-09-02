@@ -54,6 +54,15 @@ class ClusterApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data[0]["name"], "my-app")
 
+    @patch("clusters.views.KubernetesGateway.connection_status")
+    def test_cluster_connection_endpoint(self, connection_status):
+        connection_status.return_value = {"connected": True, "version": "v1.36.3+k3s1"}
+
+        response = self.client.get(f"/api/clusters/{self.cluster.pk}/connection/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["connected"])
+
     @patch("clusters.views.KubernetesGateway.create_namespace")
     def test_creates_namespace(self, create_namespace):
         create_namespace.return_value = {"name": "my-app", "status": "Active"}

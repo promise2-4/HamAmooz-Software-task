@@ -6,19 +6,22 @@ from django.conf import settings
 from django.utils import timezone
 
 from clusters.kubernetes import KubernetesGateway
+from config.metrics import BACKUPS_IN_PROGRESS, observe_terminal_backup
 
 from .models import Backup, BackupSchedule
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=15, name="backups.tasks.run_backup")
 def run_backup(self, backup_id):
-    backup = Backup.objects.select_related("app__namespace__cluster").get(pk=backup_id)
-    backup.status = Backup.Status.RUNNING
-    backup.started_at = timezone.now()
-    backup.error_message = ""
-    backup.save(update_fields=["status", "started_at", "error_message"])
-
+    BACKUPS_IN_PROGRESS.inc()
     try:
+        backup = Backup.objects.select_related("app__namespace__cluster").get(pk=backup_id)
+        backup.status = Backup.Status.RUNNING
+        if backup.started_at is None:
+            backup.started_at = timezone.now()
+        backup.error_message = ""
+        backup.save(update_fields=["status", "started_at", "error_message"])
+
         app = backup.app
         archive = KubernetesGateway(app.namespace.cluster).archive_app_path(
             namespace=app.namespace.name,
@@ -40,12 +43,16 @@ def run_backup(self, backup_id):
         backup.error_message = str(exc)[:1000]
         backup.finished_at = timezone.now()
         backup.save(update_fields=["status", "error_message", "finished_at"])
+        observe_terminal_backup(backup, "failed", backup.finished_at)
         return
-
-    backup.status = Backup.Status.COMPLETED
-    backup.output_path = str(output_path)
-    backup.finished_at = timezone.now()
-    backup.save(update_fields=["status", "output_path", "finished_at"])
+    else:
+        backup.status = Backup.Status.COMPLETED
+        backup.output_path = str(output_path)
+        backup.finished_at = timezone.now()
+        backup.save(update_fields=["status", "output_path", "finished_at"])
+        observe_terminal_backup(backup, "completed", backup.finished_at)
+    finally:
+        BACKUPS_IN_PROGRESS.dec()
 
 
 @shared_task(name="backups.tasks.run_scheduled_backup")
@@ -60,8 +67,14 @@ def run_scheduled_backup(schedule_id):
 @shared_task(name="backups.tasks.mark_stale_backups")
 def mark_stale_backups():
     threshold = timezone.now() - timedelta(hours=24)
-    Backup.objects.filter(status=Backup.Status.PENDING, created_at__lt=threshold).update(
+    finished_at = timezone.now()
+    stale_backups = list(
+        Backup.objects.filter(status=Backup.Status.PENDING, created_at__lt=threshold)
+    )
+    Backup.objects.filter(pk__in=[backup.pk for backup in stale_backups]).update(
         status=Backup.Status.FAILED,
         error_message="Backup did not start within 24 hours.",
-        finished_at=timezone.now(),
+        finished_at=finished_at,
     )
+    for backup in stale_backups:
+        observe_terminal_backup(backup, "failed", finished_at)

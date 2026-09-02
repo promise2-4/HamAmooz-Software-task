@@ -9,10 +9,20 @@ from rest_framework.test import APIClient
 
 from backups.models import Backup, BackupSchedule
 from backups.tasks import run_backup
+from config.metrics import BACKUP_DURATION, BACKUP_JOBS, BACKUPS_IN_PROGRESS
 from clusters.models import App, Cluster, Namespace
 
 
 FERNET_KEY = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+
+
+def histogram_count(metric):
+    return next(
+        sample.value
+        for family in metric.collect()
+        for sample in family.samples
+        if sample.name.endswith("_count")
+    )
 
 
 @override_settings(KUBERNETES_TOKEN_ENCRYPTION_KEY=FERNET_KEY)
@@ -93,6 +103,12 @@ class BackupApiTests(TestCase):
         archive_app_path.return_value = b"\x1f\x8btest-archive"
         backup = Backup.objects.create(app=self.app, source_path="/data/file.db")
 
+        completed = BACKUP_JOBS.labels("completed")
+        duration = BACKUP_DURATION.labels("completed")
+        completed_before = completed._value.get()
+        duration_count_before = histogram_count(duration)
+        in_progress_before = BACKUPS_IN_PROGRESS._value.get()
+
         with TemporaryDirectory() as directory, override_settings(BACKUP_ROOT=directory):
             run_backup.run(backup.pk)
             backup.refresh_from_db()
@@ -100,3 +116,17 @@ class BackupApiTests(TestCase):
         self.assertEqual(backup.status, Backup.Status.COMPLETED)
         self.assertIn(f"/{self.app.pk}/", backup.output_path)
         self.assertTrue(backup.output_path.endswith(f"/{backup.pk}.tar.gz"))
+        self.assertEqual(completed._value.get(), completed_before + 1)
+        self.assertEqual(histogram_count(duration), duration_count_before + 1)
+        self.assertEqual(BACKUPS_IN_PROGRESS._value.get(), in_progress_before)
+
+    def test_custom_metrics_are_exposed_by_django(self):
+        response = self.client.get("/metrics")
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("hamamooz_kubernetes_operations_total", content)
+        self.assertIn("hamamooz_kubernetes_operation_duration_seconds", content)
+        self.assertIn("hamamooz_backup_jobs_total", content)
+        self.assertIn("hamamooz_backup_duration_seconds", content)
+        self.assertIn("hamamooz_backups_in_progress", content)

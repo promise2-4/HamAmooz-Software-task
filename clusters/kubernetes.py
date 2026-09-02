@@ -9,6 +9,8 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 from kubernetes.stream import stream
 
+from config.metrics import observe_kubernetes_operation
+
 from .models import Cluster
 
 
@@ -38,10 +40,18 @@ class KubernetesGateway:
     def _apps_api(self):
         return client.AppsV1Api(self._api_client())
 
+    def connection_status(self):
+        with observe_kubernetes_operation("cluster", "list"):
+            version = client.VersionApi(self._api_client()).get_code(
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT
+            )
+        return {"connected": True, "version": version.git_version}
+
     def list_application_namespaces(self):
-        namespaces = self._api().list_namespace(
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT
-        ).items
+        with observe_kubernetes_operation("namespace", "list"):
+            namespaces = self._api().list_namespace(
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT
+            ).items
         return [
             {
                 "name": namespace.metadata.name,
@@ -64,9 +74,10 @@ class KubernetesGateway:
                 labels={"app.kubernetes.io/managed-by": "cluster-api"},
             )
         )
-        namespace = self._api().create_namespace(
-            body=body, _request_timeout=KUBERNETES_REQUEST_TIMEOUT
-        )
+        with observe_kubernetes_operation("namespace", "create"):
+            namespace = self._api().create_namespace(
+                body=body, _request_timeout=KUBERNETES_REQUEST_TIMEOUT
+            )
         return {
             "name": namespace.metadata.name,
             "status": namespace.status.phase,
@@ -74,9 +85,10 @@ class KubernetesGateway:
         }
 
     def delete_namespace(self, name):
-        return self._api().delete_namespace(
-            name=name, _request_timeout=KUBERNETES_REQUEST_TIMEOUT
-        )
+        with observe_kubernetes_operation("namespace", "delete"):
+            return self._api().delete_namespace(
+                name=name, _request_timeout=KUBERNETES_REQUEST_TIMEOUT
+            )
 
     def create_deployment(self, namespace, name, image, replicas=1, cpu_request="", memory_request=""):
         labels = {"app.kubernetes.io/name": name, "app.kubernetes.io/managed-by": "cluster-api"}
@@ -101,47 +113,51 @@ class KubernetesGateway:
                 template=template,
             ),
         )
-        return self._apps_api().create_namespaced_deployment(
-            namespace=namespace,
-            body=body,
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
-        )
+        with observe_kubernetes_operation("app", "create"):
+            return self._apps_api().create_namespaced_deployment(
+                namespace=namespace,
+                body=body,
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
+            )
 
     def update_deployment(self, namespace, name, image, replicas, cpu_request="", memory_request=""):
-        deployment = self._apps_api().read_namespaced_deployment(
-            name=name,
-            namespace=namespace,
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
-        )
-        deployment.spec.replicas = replicas
-        container = deployment.spec.template.spec.containers[0]
-        container.image = image
-        requests = {}
-        if cpu_request:
-            requests["cpu"] = cpu_request
-        if memory_request:
-            requests["memory"] = memory_request
-        container.resources = client.V1ResourceRequirements(requests=requests) if requests else None
-        return self._apps_api().patch_namespaced_deployment(
-            name=name,
-            namespace=namespace,
-            body=deployment,
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
-        )
+        with observe_kubernetes_operation("app", "update"):
+            deployment = self._apps_api().read_namespaced_deployment(
+                name=name,
+                namespace=namespace,
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
+            )
+            deployment.spec.replicas = replicas
+            container = deployment.spec.template.spec.containers[0]
+            container.image = image
+            requests = {}
+            if cpu_request:
+                requests["cpu"] = cpu_request
+            if memory_request:
+                requests["memory"] = memory_request
+            container.resources = client.V1ResourceRequirements(requests=requests) if requests else None
+            return self._apps_api().patch_namespaced_deployment(
+                name=name,
+                namespace=namespace,
+                body=deployment,
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
+            )
 
     def delete_deployment(self, namespace, name):
-        return self._apps_api().delete_namespaced_deployment(
-            name=name,
-            namespace=namespace,
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
-        )
+        with observe_kubernetes_operation("app", "delete"):
+            return self._apps_api().delete_namespaced_deployment(
+                name=name,
+                namespace=namespace,
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
+            )
 
     def deployment_status(self, namespace, name):
-        deployment = self._apps_api().read_namespaced_deployment(
-            name=name,
-            namespace=namespace,
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
-        )
+        with observe_kubernetes_operation("app", "list"):
+            deployment = self._apps_api().read_namespaced_deployment(
+                name=name,
+                namespace=namespace,
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
+            )
         status = deployment.status
         return {
             "ready": (status.ready_replicas or 0) == (deployment.spec.replicas or 0),
@@ -150,38 +166,39 @@ class KubernetesGateway:
         }
 
     def archive_app_path(self, namespace, app_name, source_path):
-        selector = (
-            f"app.kubernetes.io/name={app_name},"
-            "app.kubernetes.io/managed-by=cluster-api"
-        )
-        pods = self._api().list_namespaced_pod(
-            namespace=namespace,
-            label_selector=selector,
-            _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
-        ).items
-        running_pods = [pod for pod in pods if pod.status.phase == "Running"]
-        if not running_pods:
-            raise RuntimeError("No running pod was found for this app.")
+        with observe_kubernetes_operation("app", "list"):
+            selector = (
+                f"app.kubernetes.io/name={app_name},"
+                "app.kubernetes.io/managed-by=cluster-api"
+            )
+            pods = self._api().list_namespaced_pod(
+                namespace=namespace,
+                label_selector=selector,
+                _request_timeout=KUBERNETES_REQUEST_TIMEOUT,
+            ).items
+            running_pods = [pod for pod in pods if pod.status.phase == "Running"]
+            if not running_pods:
+                raise RuntimeError("No running pod was found for this app.")
 
-        path = PurePosixPath(source_path)
-        parent = str(path.parent)
-        name = path.name
-        command = [
-            "/bin/sh",
-            "-c",
-            f"tar -czf - -C {shlex.quote(parent)} {shlex.quote(name)} | base64",
-        ]
-        encoded_archive = stream(
-            self._api().connect_get_namespaced_pod_exec,
-            running_pods[0].metadata.name,
-            namespace,
-            command=command,
-            container=app_name,
-            stderr=True,
-            stdin=False,
-            stdout=True,
-            tty=False,
-        )
+            path = PurePosixPath(source_path)
+            parent = str(path.parent)
+            name = path.name
+            command = [
+                "/bin/sh",
+                "-c",
+                f"tar -czf - -C {shlex.quote(parent)} {shlex.quote(name)} | base64",
+            ]
+            encoded_archive = stream(
+                self._api().connect_get_namespaced_pod_exec,
+                running_pods[0].metadata.name,
+                namespace,
+                command=command,
+                container=app_name,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
         try:
             archive = base64.b64decode("".join(encoded_archive.split()), validate=True)
         except (ValueError, binascii.Error) as exc:

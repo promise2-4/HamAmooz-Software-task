@@ -42,6 +42,23 @@ class ClusterViewSet(viewsets.ModelViewSet):
             return Response(NamespaceSerializer(cluster.namespaces.all(), many=True).data)
         return create_namespace(request, cluster)
 
+    @action(detail=True, methods=["get"], url_path="connection")
+    def connection(self, request, pk=None):
+        try:
+            return Response(KubernetesGateway(self.get_object()).connection_status())
+        except ApiException as exc:
+            return kubernetes_error(exc)
+        except (HTTPError, OSError, TimeoutError):
+            return Response(
+                {"detail": "Could not connect to the Kubernetes API."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except ImproperlyConfigured:
+            return Response(
+                {"detail": "The cluster token encryption key is invalid or cannot decrypt this cluster token."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
 
 def create_namespace(request, cluster):
     serializer = NamespaceCreateSerializer(data=request.data)

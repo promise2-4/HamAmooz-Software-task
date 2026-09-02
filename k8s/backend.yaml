@@ -10,13 +10,14 @@ metadata:
   namespace: hemmasian
 data:
   DJANGO_DEBUG: "false"
-  DJANGO_ALLOWED_HOSTS: "hemmasian,backend,backend.hemmasian.svc.cluster.local,94.101.187.131,188.121.116.242"
+  DJANGO_ALLOWED_HOSTS: "*"
   DATABASE_PATH: "/data/db.sqlite3"
   BACKUP_ROOT: "/backups"
   CELERY_BROKER_URL: "redis://redis:6379/0"
   CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+  PROMETHEUS_EXPORT_PORT: "9808"
   KUBERNETES_VERIFY_SSL: "false"
-  KUBERNETES_PROTECTED_NAMESPACES: "default,kube-system,kube-public,kube-node-lease,hemmasian,monitoring"
+  KUBERNETES_PROTECTED_NAMESPACES: "default,kube-system,kube-public,kube-node-lease,hemmasian,monitoring,monitoring-system,monitoring-hamamooz-task"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -106,7 +107,7 @@ spec:
     spec:
       initContainers:
         - name: prepare-data
-          image: hemmasian-backend:1.0.0
+          image: hemmasian-backend:1.1.0
           imagePullPolicy: Never
           command: ["/bin/sh", "-c", "mkdir -p /data /backups && chown -R 100:101 /data /backups"]
           securityContext:
@@ -117,7 +118,7 @@ spec:
             - name: backups
               mountPath: /backups
         - name: migrate
-          image: hemmasian-backend:1.0.0
+          image: hemmasian-backend:1.1.0
           imagePullPolicy: Never
           command: ["python", "manage.py", "migrate", "--noinput"]
           envFrom:
@@ -130,7 +131,7 @@ spec:
               mountPath: /data
       containers:
         - name: backend
-          image: hemmasian-backend:1.0.0
+          image: hemmasian-backend:1.1.0
           imagePullPolicy: Never
           envFrom:
             - secretRef:
@@ -186,6 +187,21 @@ spec:
       port: 8000
       targetPort: http
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-metrics
+  namespace: hemmasian
+  labels:
+    observability: hamamooz
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: http
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -205,9 +221,9 @@ spec:
     spec:
       containers:
         - name: celery-worker
-          image: hemmasian-backend:1.0.0
+          image: hemmasian-backend:1.1.0
           imagePullPolicy: Never
-          command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=1"]
+          command: ["celery", "-A", "config", "worker", "--loglevel=info", "--pool=solo", "--concurrency=1"]
           envFrom:
             - secretRef:
                 name: backend-secret
@@ -219,6 +235,9 @@ spec:
               memory: 192Mi
             limits:
               memory: 512Mi
+          ports:
+            - name: metrics
+              containerPort: 9808
           volumeMounts:
             - name: data
               mountPath: /data
@@ -232,13 +251,28 @@ spec:
           persistentVolumeClaim:
             claimName: backend-backups
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: celery-metrics
+  namespace: hemmasian
+  labels:
+    observability: hamamooz
+spec:
+  selector:
+    app: celery-worker
+  ports:
+    - name: metrics
+      port: 9808
+      targetPort: metrics
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: celery-beat
   namespace: hemmasian
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
@@ -251,7 +285,7 @@ spec:
     spec:
       containers:
         - name: celery-beat
-          image: hemmasian-backend:1.0.0
+          image: hemmasian-backend:1.1.0
           imagePullPolicy: Never
           command: ["celery", "-A", "config", "beat", "--loglevel=info"]
           envFrom:

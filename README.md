@@ -2,6 +2,10 @@
 
 A cluster-management application built with Django REST Framework and React. It registers Kubernetes clusters, creates and lists usable namespaces, deploys applications, and schedules backups. The local stack runs with Docker Compose and includes lightweight monitoring.
 
+## Deployment status
+
+This version has been validated locally with Docker Desktop and Minikube. It has not been deployed to the remote Kubernetes nodes or to a production environment.
+
 ## Components
 
 | Component | Address | Description |
@@ -61,6 +65,10 @@ Prometheus retention is limited to three days or 1 GB, and each service has a me
 
 Raw Django metrics are available at <http://localhost:8000/metrics>. To discover and test metrics in Prometheus, open <http://localhost:9090/graph> and try names such as `django_http_requests_total_by_method_total`, `process_resident_memory_bytes`, `redis_connected_clients`, and `redis_memory_used_bytes`.
 
+Application-specific metrics cover Kubernetes operation outcomes and duration as well as backup outcomes, duration, and current concurrency. Django exposes Kubernetes metrics on `/metrics`; the Celery worker exposes backup metrics internally on port `9808`. Prometheus scrapes both. See [the VictoriaMetrics guide](docs/VICTORIAMETRICS_GUIDE.md) for the staged Kubernetes pipeline, capacity checks, secure iteration, VMUI, and Grafana queries.
+
+For the local Minikube pipeline, Grafana remains in Docker and joins Minikube's private Docker network. The private `vmsingle-hamamooz-nodeport` service carries queries to VictoriaMetrics without a long-running `kubectl port-forward`. Open <http://localhost:3000/d/hamamooz-task-metrics/hamamooz-task-metrics> for the five assignment metrics; its default time range is one hour.
+
 ## API routes
 
 All API routes require Django Basic or Session authentication.
@@ -68,6 +76,7 @@ All API routes require Django Basic or Session authentication.
 | Method | Path | Purpose |
 |---|---|---|
 | `GET`, `POST` | `/api/clusters/` | List or register clusters |
+| `GET` | `/api/clusters/{id}/connection/` | Test authenticated Kubernetes API connectivity |
 | `GET`, `POST` | `/api/namespaces/` | List or create tracked Kubernetes namespaces |
 | `DELETE` | `/api/namespaces/{id}/` | Delete a namespace |
 | `GET`, `POST` | `/api/apps/` | List or deploy applications |

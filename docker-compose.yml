@@ -15,10 +15,10 @@ services:
   backend:
     build:
       context: .
-    image: hemmasian-backend:1.0.0
+    image: hemmasian-backend:1.1.0
     labels:
       com.hamamooz.component: backend
-      com.hamamooz.version: 1.0.0
+      com.hamamooz.version: 1.1.0
     environment: *backend-environment
     volumes:
       - backend-data:/data
@@ -35,13 +35,15 @@ services:
     mem_limit: 320m
 
   celery-worker:
-    image: hemmasian-backend:1.0.0
+    image: hemmasian-backend:1.1.0
     labels:
       com.hamamooz.component: backend-worker
-      com.hamamooz.version: 1.0.0
+      com.hamamooz.version: 1.1.0
     entrypoint: []
-    command: celery -A config worker --loglevel=info --concurrency=1
-    environment: *backend-environment
+    command: celery -A config worker --loglevel=info --pool=solo --concurrency=1
+    environment:
+      <<: *backend-environment
+      PROMETHEUS_EXPORT_PORT: "9808"
     volumes:
       - backend-data:/data
       - backup-data:/backups
@@ -52,10 +54,10 @@ services:
     mem_limit: 192m
 
   celery-beat:
-    image: hemmasian-backend:1.0.0
+    image: hemmasian-backend:1.1.0
     labels:
       com.hamamooz.component: backend-scheduler
-      com.hamamooz.version: 1.0.0
+      com.hamamooz.version: 1.1.0
     entrypoint: []
     command: celery -A config beat --loglevel=info
     environment: *backend-environment
@@ -157,6 +159,9 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+    networks:
+      - default
+      - minikube
     restart: unless-stopped
     mem_limit: 192m
 
@@ -166,3 +171,8 @@ volumes:
   redis-data:
   prometheus-data:
   grafana-data:
+
+networks:
+  minikube:
+    external: true
+    name: minikube

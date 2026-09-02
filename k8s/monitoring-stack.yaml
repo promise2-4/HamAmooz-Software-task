@@ -122,7 +122,7 @@ metadata:
   name: prometheus
   namespace: monitoring
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
@@ -191,7 +191,7 @@ metadata:
   name: kube-state-metrics
   namespace: monitoring
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: kube-state-metrics
@@ -241,6 +241,8 @@ spec:
       labels:
         app: node-exporter
     spec:
+      nodeSelector:
+        hamamooz.io/disabled: "true"
       hostNetwork: true
       hostPID: true
       containers:
@@ -299,7 +301,7 @@ metadata:
   name: grafana
   namespace: monitoring
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
