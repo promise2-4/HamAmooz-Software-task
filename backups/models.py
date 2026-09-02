@@ -1,6 +1,7 @@
 import secrets
 
 from django.db import models
+from django_prometheus.models import ExportModelOperationsMixin
 
 from clusters.models import App
 
@@ -13,7 +14,7 @@ def generate_schedule_id():
     return f"sch_{secrets.token_hex(6)}"
 
 
-class Backup(models.Model):
+class Backup(ExportModelOperationsMixin("backup"), models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         RUNNING = "running", "Running"
@@ -37,7 +38,7 @@ class Backup(models.Model):
         return self.id
 
 
-class BackupSchedule(models.Model):
+class BackupSchedule(ExportModelOperationsMixin("backup_schedule"), models.Model):
     id = models.CharField(primary_key=True, max_length=32, default=generate_schedule_id, editable=False)
     app = models.ForeignKey(App, on_delete=models.CASCADE, related_name="backup_schedules")
     source_path = models.CharField(max_length=1000)

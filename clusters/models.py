@@ -2,9 +2,10 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
+from django_prometheus.models import ExportModelOperationsMixin
 
 
-class Cluster(models.Model):
+class Cluster(ExportModelOperationsMixin("cluster"), models.Model):
     name = models.CharField(max_length=100, unique=True)
     addr = models.URLField(
         max_length=500,
@@ -50,7 +51,7 @@ class Cluster(models.Model):
         self.encrypted_token = self._cipher().encrypt(value.encode()).decode()
 
 
-class Namespace(models.Model):
+class Namespace(ExportModelOperationsMixin("namespace"), models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.CASCADE, related_name="namespaces")
     name = models.CharField(max_length=63)
     status = models.CharField(max_length=32, default="Active")
@@ -66,7 +67,7 @@ class Namespace(models.Model):
         return f"{self.cluster.name}/{self.name}"
 
 
-class App(models.Model):
+class App(ExportModelOperationsMixin("app"), models.Model):
     namespace = models.ForeignKey(Namespace, on_delete=models.CASCADE, related_name="apps")
     name = models.CharField(max_length=63)
     image = models.CharField(max_length=500)
