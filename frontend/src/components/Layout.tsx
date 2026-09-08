@@ -21,7 +21,7 @@ export function Layout() {
         </nav>
         <div className="sidebar-note">
           <span className="signal"><i /></span>
-          <div><strong>Local workspace</strong><small>API on port 8000</small></div>
+          <div><strong>Cluster workspace</strong><small>Backend API connected</small></div>
         </div>
         <button className="nav-link logout" onClick={logout}><LogoutIcon /> Sign out</button>
       </aside>

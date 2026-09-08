@@ -25,6 +25,15 @@ def histogram_count(metric):
     }
 )
 class KubernetesGatewayTests(SimpleTestCase):
+    @override_settings(KUBERNETES_VERIFY_SSL=True, KUBERNETES_CA_CERT="/tmp/k3s-ca.crt")
+    def test_configuration_uses_the_configured_ca_certificate(self):
+        cluster = SimpleNamespace(addr="https://cluster:6443", token="token")
+
+        configuration = KubernetesGateway(cluster)._configuration()
+
+        self.assertTrue(configuration.verify_ssl)
+        self.assertEqual(configuration.ssl_ca_cert, "/tmp/k3s-ca.crt")
+
     @patch("clusters.kubernetes.KubernetesGateway._api")
     def test_list_returns_only_active_non_system_namespaces(self, api_factory):
         def namespace(name, phase):

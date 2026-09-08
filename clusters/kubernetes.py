@@ -21,21 +21,22 @@ KUBERNETES_REQUEST_TIMEOUT = (3, 7)
 class KubernetesGateway:
     cluster: Cluster
 
-    def _api(self):
+    def _configuration(self):
         configuration = client.Configuration()
         configuration.host = self.cluster.addr
         configuration.api_key = {"authorization": self.cluster.token}
         configuration.api_key_prefix = {"authorization": "Bearer"}
         configuration.verify_ssl = settings.KUBERNETES_VERIFY_SSL
+        if configuration.verify_ssl and settings.KUBERNETES_CA_CERT:
+            configuration.ssl_ca_cert = settings.KUBERNETES_CA_CERT
+        return configuration
+
+    def _api(self):
+        configuration = self._configuration()
         return client.CoreV1Api(client.ApiClient(configuration))
 
     def _api_client(self):
-        configuration = client.Configuration()
-        configuration.host = self.cluster.addr
-        configuration.api_key = {"authorization": self.cluster.token}
-        configuration.api_key_prefix = {"authorization": "Bearer"}
-        configuration.verify_ssl = settings.KUBERNETES_VERIFY_SSL
-        return client.ApiClient(configuration)
+        return client.ApiClient(self._configuration())
 
     def _apps_api(self):
         return client.AppsV1Api(self._api_client())

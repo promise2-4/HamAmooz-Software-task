@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
@@ -12,6 +13,7 @@ from clusters.models import App, Cluster, Namespace
 )
 class ClusterApiTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user("tester", password="secret")
         self.client = APIClient()
         self.client.force_authenticate(self.user)
@@ -116,6 +118,39 @@ class ClusterApiTests(TestCase):
         create_deployment.assert_called_once()
         self.assertTrue(App.objects.filter(namespace=namespace, name="web").exists())
         self.assertTrue(response.data["ready"])
+
+    @patch("clusters.views.KubernetesGateway.deployment_status")
+    def test_app_live_status_is_cached_for_sixty_seconds(self, deployment_status):
+        namespace = Namespace.objects.create(cluster=self.cluster, name="cached-ns")
+        app = App.objects.create(namespace=namespace, name="cached-app", image="nginx:1.27")
+        deployment_status.return_value = {"ready": True, "ready_replicas": 1, "replicas": 1}
+
+        first = self.client.get(f"/api/apps/{app.pk}/")
+        second = self.client.get(f"/api/apps/{app.pk}/")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        deployment_status.assert_called_once()
+
+    def test_app_rejects_invalid_resource_quantities(self):
+        namespace = Namespace.objects.create(cluster=self.cluster, name="resource-ns")
+
+        response = self.client.post(
+            "/api/apps/",
+            {
+                "namespace": namespace.pk,
+                "name": "invalid-resources",
+                "image": "nginx:1.27",
+                "replicas": 1,
+                "cpu_request": "fast",
+                "memory_request": "a-lot",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("cpu_request", response.data)
+        self.assertIn("memory_request", response.data)
 
 
 @override_settings(

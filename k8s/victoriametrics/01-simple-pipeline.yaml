@@ -14,11 +14,13 @@ spec:
         storage: 2Gi
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 128Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 300m
+      memory: 384Mi
+  nodeSelector:
+    hamamooz.io/workload-node: "true"
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
@@ -41,24 +43,8 @@ spec:
     limits:
       cpu: 200m
       memory: 128Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vmsingle-hamamooz-nodeport
-  namespace: monitoring-hamamooz-task
-spec:
-  type: NodePort
-  selector:
-    app.kubernetes.io/component: monitoring
-    app.kubernetes.io/instance: hamamooz
-    app.kubernetes.io/name: vmsingle
-    managed-by: vm-operator
-  ports:
-    - name: http
-      port: 8428
-      targetPort: 8429
-      nodePort: 30428
+  nodeSelector:
+    hamamooz.io/workload-node: "true"
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape

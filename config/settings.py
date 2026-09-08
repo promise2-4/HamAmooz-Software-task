@@ -8,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
     KUBERNETES_VERIFY_SSL=(bool, True),
+    APP_STATUS_CACHE_TTL=(int, 60),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
@@ -103,6 +104,24 @@ KUBERNETES_PROTECTED_NAMESPACES = set(
     )
 )
 KUBERNETES_VERIFY_SSL = env("KUBERNETES_VERIFY_SSL")
+KUBERNETES_CA_CERT = env("KUBERNETES_CA_CERT", default="")
+
+APP_STATUS_CACHE_TTL = env("APP_STATUS_CACHE_TTL")
+APP_STATUS_CACHE_URL = env("APP_STATUS_CACHE_URL", default="")
+if APP_STATUS_CACHE_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": APP_STATUS_CACHE_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "app-status",
+        }
+    }
 
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://127.0.0.1:6379/0")

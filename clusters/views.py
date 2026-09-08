@@ -1,9 +1,12 @@
 from django.db import IntegrityError, transaction
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.cache import cache
 from kubernetes.client.exceptions import ApiException
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from redis.exceptions import RedisError
 from urllib3.exceptions import HTTPError
 
 from .kubernetes import KubernetesGateway
@@ -14,6 +17,27 @@ from .serializers import (
     NamespaceCreateSerializer,
     NamespaceSerializer,
 )
+
+
+def get_cached_status(key):
+    try:
+        return cache.get(key)
+    except (RedisError, OSError):
+        return None
+
+
+def set_cached_status(key, value):
+    try:
+        cache.set(key, value, timeout=settings.APP_STATUS_CACHE_TTL)
+    except (RedisError, OSError):
+        pass
+
+
+def delete_cached_status(key):
+    try:
+        cache.delete(key)
+    except (RedisError, OSError):
+        pass
 
 
 def kubernetes_error(exc):
@@ -168,12 +192,27 @@ class AppViewSet(viewsets.ModelViewSet):
 
     def _live_data(self, app):
         data = AppSerializer(app).data
+        cache_key = f"app-status:{app.pk}"
+        cached_status = get_cached_status(cache_key)
+        if cached_status is not None:
+            data.update(cached_status)
+            return data
         try:
-            data.update(KubernetesGateway(app.namespace.cluster).deployment_status(app.namespace.name, app.name))
+            live_status = KubernetesGateway(app.namespace.cluster).deployment_status(
+                app.namespace.name, app.name
+            )
+            set_cached_status(cache_key, live_status)
         except ApiException as exc:
-            data.update({"ready": False, "status_error": f"Kubernetes status unavailable ({exc.status})"})
+            live_status = {
+                "ready": False,
+                "status_error": f"Kubernetes status unavailable ({exc.status})",
+            }
         except (HTTPError, OSError, TimeoutError):
-            data.update({"ready": False, "status_error": "Kubernetes status unavailable"})
+            live_status = {
+                "ready": False,
+                "status_error": "Kubernetes status unavailable",
+            }
+        data.update(live_status)
         return data
 
     def list(self, request, *args, **kwargs):
@@ -234,6 +273,7 @@ class AppViewSet(viewsets.ModelViewSet):
         for field, value in values.items():
             setattr(app, field, value)
         app.save()
+        delete_cached_status(f"app-status:{app.pk}")
         return Response(self._live_data(app))
 
     def destroy(self, request, *args, **kwargs):
@@ -253,5 +293,6 @@ class AppViewSet(viewsets.ModelViewSet):
                     {"detail": "The cluster token encryption key is invalid or cannot decrypt this cluster token."},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
+            delete_cached_status(f"app-status:{app.pk}")
             app.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

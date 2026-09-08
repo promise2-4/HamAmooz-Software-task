@@ -18,6 +18,8 @@ spec:
     limits:
       cpu: 100m
       memory: 64Mi
+  nodeSelector:
+    hamamooz.io/workload-node: "true"
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
@@ -39,4 +41,5 @@ spec:
         - /api/v1/query.*
         - /api/v1/label.*
         - /api/v1/series.*
+        - /api/v1/metadata.*
         - /api/v1/status.*

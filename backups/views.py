@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from .models import Backup, BackupSchedule
 from .serializers import BackupCreateSerializer, BackupSerializer
 from .tasks import run_backup
+from config.metrics import observe_terminal_backup
 
 
 class BackupViewSet(
@@ -51,6 +52,7 @@ class BackupViewSet(
             backup.error_message = "Backup did not start within 24 hours."
             backup.finished_at = timezone.now()
             backup.save(update_fields=["status", "error_message", "finished_at"])
+            observe_terminal_backup(backup, "failed", backup.finished_at)
         return Response(self.get_serializer(backup).data)
 
     def create(self, request, *args, **kwargs):
@@ -78,6 +80,7 @@ class BackupViewSet(
             backup.error_message = "The backup task could not be queued."
             backup.finished_at = timezone.now()
             backup.save(update_fields=["status", "error_message", "finished_at"])
+            observe_terminal_backup(backup, "failed", backup.finished_at)
             return Response(
                 {"backup_id": backup.pk, "status": backup.status},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,

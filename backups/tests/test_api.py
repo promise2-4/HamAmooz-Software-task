@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
+from kombu.exceptions import OperationalError
 
 from backups.models import Backup, BackupSchedule
 from backups.tasks import run_backup
@@ -53,6 +54,20 @@ class BackupApiTests(TestCase):
         self.assertTrue(response.data["backup_id"].startswith("bkp_"))
         self.assertEqual(response.data["status"], "pending")
         delay.assert_called_once_with(response.data["backup_id"])
+
+    @patch("backups.views.run_backup.delay", side_effect=OperationalError("broker unavailable"))
+    def test_queue_failure_is_recorded_as_a_failed_terminal_outcome(self, delay):
+        failed = BACKUP_JOBS.labels("failed")
+        failed_before = failed._value.get()
+
+        response = self.client.post(
+            "/api/backup/",
+            {"app_id": self.app.pk, "source_path": "/var/lib/myapp/data.db"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(failed._value.get(), failed_before + 1)
 
     def test_status_and_app_backup_list_use_the_same_backup_id(self):
         backup = Backup.objects.create(app=self.app, source_path="/data/file.db")

@@ -1,3 +1,6 @@
+from decimal import DecimalException
+
+from kubernetes.utils.quantity import parse_quantity
 from rest_framework import serializers
 
 from .models import App, Cluster, Namespace
@@ -76,3 +79,21 @@ class AppSerializer(serializers.ModelSerializer):
         if value > 20:
             raise serializers.ValidationError("replicas cannot be greater than 20.")
         return value
+
+    @staticmethod
+    def validate_resource_quantity(value, label):
+        if not value:
+            return value
+        try:
+            quantity = parse_quantity(value)
+        except (ValueError, TypeError, DecimalException):
+            raise serializers.ValidationError(f"{label} must be a valid Kubernetes quantity.")
+        if quantity <= 0:
+            raise serializers.ValidationError(f"{label} must be greater than zero.")
+        return value
+
+    def validate_cpu_request(self, value):
+        return self.validate_resource_quantity(value, "cpu_request")
+
+    def validate_memory_request(self, value):
+        return self.validate_resource_quantity(value, "memory_request")

@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: redis-exporter
   namespace: hemmasian
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/part-of: hamamooz
 spec:
   replicas: 1
   selector:
@@ -12,7 +15,11 @@ spec:
     metadata:
       labels:
         app: redis-exporter
+        app.kubernetes.io/name: redis-exporter
+        app.kubernetes.io/part-of: hamamooz
     spec:
+      nodeSelector:
+        hamamooz.io/workload-node: "true"
       containers:
         - name: redis-exporter
           image: oliver006/redis_exporter:v1.80.1
@@ -24,10 +31,11 @@ spec:
               containerPort: 9121
           resources:
             requests:
-              cpu: 20m
-              memory: 32Mi
+              cpu: 10m
+              memory: 24Mi
             limits:
-              memory: 128Mi
+              cpu: 100m
+              memory: 64Mi
 ---
 apiVersion: v1
 kind: Service

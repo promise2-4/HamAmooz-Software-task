@@ -8,6 +8,8 @@ x-backend-environment: &backend-environment
   BACKUP_ROOT: /backups
   CELERY_BROKER_URL: redis://redis:6379/0
   CELERY_RESULT_BACKEND: redis://redis:6379/0
+  APP_STATUS_CACHE_URL: redis://redis:6379/1
+  APP_STATUS_CACHE_TTL: "60"
   KUBERNETES_TOKEN_ENCRYPTION_KEY: ${KUBERNETES_TOKEN_ENCRYPTION_KEY:-g5FKpOvIsoIC3NhxHPq9_Wh-Vy2WQ6P4DU83N8uoFQ=}
   KUBERNETES_VERIFY_SSL: ${KUBERNETES_VERIFY_SSL:-false}
 
@@ -15,10 +17,10 @@ services:
   backend:
     build:
       context: .
-    image: hemmasian-backend:1.1.0
+    image: hemmasian-backend:1.2.0
     labels:
       com.hamamooz.component: backend
-      com.hamamooz.version: 1.1.0
+      com.hamamooz.version: 1.2.0
     environment: *backend-environment
     volumes:
       - backend-data:/data
@@ -35,10 +37,10 @@ services:
     mem_limit: 320m
 
   celery-worker:
-    image: hemmasian-backend:1.1.0
+    image: hemmasian-backend:1.2.0
     labels:
       com.hamamooz.component: backend-worker
-      com.hamamooz.version: 1.1.0
+      com.hamamooz.version: 1.2.0
     entrypoint: []
     command: celery -A config worker --loglevel=info --pool=solo --concurrency=1
     environment:
@@ -54,10 +56,10 @@ services:
     mem_limit: 192m
 
   celery-beat:
-    image: hemmasian-backend:1.1.0
+    image: hemmasian-backend:1.2.0
     labels:
       com.hamamooz.component: backend-scheduler
-      com.hamamooz.version: 1.1.0
+      com.hamamooz.version: 1.2.0
     entrypoint: []
     command: celery -A config beat --loglevel=info
     environment: *backend-environment
@@ -86,10 +88,10 @@ services:
   frontend:
     build:
       context: ./frontend
-    image: hemmasian-frontend:1.0.0
+    image: hemmasian-frontend:1.1.0
     labels:
       com.hamamooz.component: frontend
-      com.hamamooz.version: 1.0.0
+      com.hamamooz.version: 1.1.0
     ports:
       - "8000:80"
     depends_on:

@@ -1,0 +1,189 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+  namespace: monitoring-hamamooz-task
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: hamamooz
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics
+        uid: P4169E866C3094E38
+        type: prometheus
+        access: proxy
+        url: http://vmauth-hamamooz.monitoring-hamamooz-task.svc:8427
+        basicAuth: true
+        basicAuthUser: $VM_READER_USERNAME
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 15s
+        secureJsonData:
+          basicAuthPassword: $VM_READER_PASSWORD
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: HamAmooz
+        folder: HamAmooz
+        type: file
+        allowUiUpdates: false
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: monitoring-hamamooz-task
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: hamamooz
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring-hamamooz-task
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: hamamooz
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: hamamooz
+    spec:
+      nodeSelector:
+        hamamooz.io/workload-node: "true"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana:12.1.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: username
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: password
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: VM_READER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: vmuser-hamamooz-reader
+                  key: username
+            - name: VM_READER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vmuser-hamamooz-reader
+                  key: password
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasource.yaml
+              subPath: datasource.yaml
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: grafana-data
+        - name: provisioning
+          configMap:
+            name: grafana-provisioning
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring-hamamooz-task
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: hamamooz
+spec:
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring-hamamooz-task
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: hamamooz
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: grafana.hemmasian
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  name: http

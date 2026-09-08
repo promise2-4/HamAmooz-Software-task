@@ -10,14 +10,17 @@ metadata:
   namespace: hemmasian
 data:
   DJANGO_DEBUG: "false"
-  DJANGO_ALLOWED_HOSTS: "*"
+  DJANGO_ALLOWED_HOSTS: "hemmasian,backend,localhost,127.0.0.1"
   DATABASE_PATH: "/data/db.sqlite3"
   BACKUP_ROOT: "/backups"
   CELERY_BROKER_URL: "redis://redis:6379/0"
   CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+  APP_STATUS_CACHE_URL: "redis://redis:6379/1"
+  APP_STATUS_CACHE_TTL: "60"
   PROMETHEUS_EXPORT_PORT: "9808"
-  KUBERNETES_VERIFY_SSL: "false"
-  KUBERNETES_PROTECTED_NAMESPACES: "default,kube-system,kube-public,kube-node-lease,hemmasian,monitoring,monitoring-system,monitoring-hamamooz-task"
+  KUBERNETES_VERIFY_SSL: "true"
+  KUBERNETES_CA_CERT: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  KUBERNETES_PROTECTED_NAMESPACES: "default,kube-system,kube-public,kube-node-lease,hemmasian,memos,monitoring,monitoring-system,monitoring-hamamooz-task"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -56,10 +59,12 @@ spec:
       labels:
         app: redis
     spec:
+      nodeSelector:
+        hamamooz.io/workload-node: "true"
       containers:
         - name: redis
           image: redis:7.4-alpine
-          args: ["redis-server", "--appendonly", "yes"]
+          args: ["redis-server", "--appendonly", "yes", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru"]
           ports:
             - name: redis
               containerPort: 6379
@@ -70,10 +75,10 @@ spec:
             periodSeconds: 5
           resources:
             requests:
-              cpu: 50m
-              memory: 64Mi
+              cpu: 25m
+              memory: 32Mi
             limits:
-              memory: 256Mi
+              memory: 128Mi
 ---
 apiVersion: v1
 kind: Service
@@ -105,10 +110,12 @@ spec:
       labels:
         app: backend
     spec:
+      nodeSelector:
+        hamamooz.io/workload-node: "true"
       initContainers:
         - name: prepare-data
-          image: hemmasian-backend:1.1.0
-          imagePullPolicy: Never
+          image: hemmasian-backend:1.2.0
+          imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c", "mkdir -p /data /backups && chown -R 100:101 /data /backups"]
           securityContext:
             runAsUser: 0
@@ -118,8 +125,8 @@ spec:
             - name: backups
               mountPath: /backups
         - name: migrate
-          image: hemmasian-backend:1.1.0
-          imagePullPolicy: Never
+          image: hemmasian-backend:1.2.0
+          imagePullPolicy: IfNotPresent
           command: ["python", "manage.py", "migrate", "--noinput"]
           envFrom:
             - secretRef:
@@ -131,8 +138,8 @@ spec:
               mountPath: /data
       containers:
         - name: backend
-          image: hemmasian-backend:1.1.0
-          imagePullPolicy: Never
+          image: hemmasian-backend:1.2.0
+          imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
                 name: backend-secret
@@ -145,20 +152,29 @@ spec:
             httpGet:
               path: /health/
               port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 2
           livenessProbe:
             httpGet:
               path: /health/
               port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
             initialDelaySeconds: 20
             periodSeconds: 20
+            timeoutSeconds: 2
           resources:
             requests:
-              cpu: 100m
-              memory: 192Mi
+              cpu: 50m
+              memory: 128Mi
             limits:
-              memory: 512Mi
+              cpu: 500m
+              memory: 320Mi
           volumeMounts:
             - name: data
               mountPath: /data
@@ -219,10 +235,12 @@ spec:
       labels:
         app: celery-worker
     spec:
+      nodeSelector:
+        hamamooz.io/workload-node: "true"
       containers:
         - name: celery-worker
-          image: hemmasian-backend:1.1.0
-          imagePullPolicy: Never
+          image: hemmasian-backend:1.2.0
+          imagePullPolicy: IfNotPresent
           command: ["celery", "-A", "config", "worker", "--loglevel=info", "--pool=solo", "--concurrency=1"]
           envFrom:
             - secretRef:
@@ -231,10 +249,11 @@ spec:
                 name: backend-config
           resources:
             requests:
-              cpu: 100m
-              memory: 192Mi
+              cpu: 50m
+              memory: 128Mi
             limits:
-              memory: 512Mi
+              cpu: 500m
+              memory: 320Mi
           ports:
             - name: metrics
               containerPort: 9808
@@ -272,7 +291,7 @@ metadata:
   name: celery-beat
   namespace: hemmasian
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -283,10 +302,12 @@ spec:
       labels:
         app: celery-beat
     spec:
+      nodeSelector:
+        hamamooz.io/workload-node: "true"
       containers:
         - name: celery-beat
-          image: hemmasian-backend:1.1.0
-          imagePullPolicy: Never
+          image: hemmasian-backend:1.2.0
+          imagePullPolicy: IfNotPresent
           command: ["celery", "-A", "config", "beat", "--loglevel=info"]
           envFrom:
             - secretRef:
@@ -295,10 +316,11 @@ spec:
                 name: backend-config
           resources:
             requests:
-              cpu: 50m
-              memory: 128Mi
+              cpu: 25m
+              memory: 64Mi
             limits:
-              memory: 384Mi
+              cpu: 200m
+              memory: 192Mi
           volumeMounts:
             - name: data
               mountPath: /data
@@ -306,22 +328,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: backend-data
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: backend
-  namespace: hemmasian
-spec:
-  ingressClassName: traefik
-  rules:
-    - host: hemmasian
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: backend
-                port:
-                  name: http
