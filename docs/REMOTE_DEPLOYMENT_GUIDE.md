@@ -20,11 +20,14 @@ ssh ubuntu@$CONTROL_PLANE 'sudo k3s kubectl get pods,deploy,statefulset,daemonse
 ssh ubuntu@$CONTROL_PLANE 'free -h && df -h / /var/lib/rancher/k3s'
 ```
 
-The old `hemmasian` PVCs are local to the worker node. Back them up before a clean reinstall:
+The old `hemmasian` PVCs are local to the worker node. First create a consistent SQLite snapshot, then archive that snapshot and the backup files before a clean reinstall:
 
 ```bash
 ssh ubuntu@$CONTROL_PLANE \
-  'sudo k3s kubectl exec -n hemmasian deployment/celery-worker -- tar -czf - /data /backups' \
+  "sudo k3s kubectl exec -n hemmasian deployment/celery-worker -c celery-worker -- python -c \"import sqlite3; source=sqlite3.connect('/data/db.sqlite3'); target=sqlite3.connect('/data/db.sqlite3.snapshot'); source.backup(target); target.close(); source.close()\""
+
+ssh ubuntu@$CONTROL_PLANE \
+  'sudo k3s kubectl exec -n hemmasian deployment/celery-worker -c celery-worker -- tar -czf - /data/db.sqlite3.snapshot /backups' \
   > hemmasian-data-before-redeploy.tar.gz
 
 tar -tzf hemmasian-data-before-redeploy.tar.gz | head
