@@ -63,6 +63,13 @@ svg { width: 20px; height: 20px; }
 .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,.075); }
 .nav-link.active { box-shadow: inset 3px 0 #60a5fa; }
 .nav-link.logout { margin-top: 12px; }
+.nav-tree { margin: 8px 0 0 25px; padding: 3px 0 3px 16px; display: grid; gap: 3px; border-left: 1px solid rgba(148,163,184,.22); }
+.tree-link { position: relative; min-height: 32px; padding: 0 9px; display: flex; align-items: center; gap: 9px; border-radius: 7px; color: #74849a; font-size: 10px; font-weight: 600; transition: .18s ease; }
+.tree-link::before { content: ""; position: absolute; left: -17px; width: 12px; border-top: 1px solid rgba(148,163,184,.22); }
+.tree-link svg { width: 14px; height: 14px; }
+.tree-link:hover { color: #d9e6f8; background: rgba(255,255,255,.045); }
+.tree-link.active { color: #8dc0ff; background: rgba(59,130,246,.1); }
+.tree-link.current { cursor: default; }
 .sidebar-note { display: flex; gap: 10px; align-items: center; margin: 0 7px 8px; padding: 13px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(255,255,255,.035); }
 .sidebar-note div { display: grid; gap: 2px; }
 .sidebar-note strong { font-size: 11px; }
@@ -250,6 +257,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .brand { padding-inline: 6px; }
   .brand span:last-child, .nav-link:not(.logout) { font-size: 0; }
   .nav-link { justify-content: center; }
+  .nav-tree { display: none; }
   .sidebar-note { display: none; }
   .resource-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .login-page { grid-template-columns: 1fr; }

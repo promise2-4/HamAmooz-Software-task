@@ -24,3 +24,5 @@ export const AlertIcon = (props: IconProps) => <IconBase {...props}><path d="M12
 export const ArrowBackIcon = (props: IconProps) => <IconBase {...props}><path d="m15 18-6-6 6-6M9 12h11" /></IconBase>;
 export const SunIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" /></IconBase>;
 export const MoonIcon = (props: IconProps) => <IconBase {...props}><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8Z" /></IconBase>;
+export const TopologyIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="5" r="2.5" /><circle cx="5" cy="18" r="2.5" /><circle cx="19" cy="18" r="2.5" /><path d="M12 7.5v4M5 15.5v-2h14v2" /></IconBase>;
+export const DetailIcon = (props: IconProps) => <IconBase {...props}><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></IconBase>;

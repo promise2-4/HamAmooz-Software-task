@@ -139,5 +139,6 @@ The direct runtime dependency inventory is documented in [docs/DEPENDENCIES.md](
 - `frontend-v1.1.0`: lightweight Kubernetes deployment for the management console.
 - `monitoring-victoriametrics-v1.1.0`: authenticated VMAuth pipeline and provisioned Grafana dashboard.
 - `hamamooz-v1.2.0`: verified K3s release with the updated frontend theme, navigation, monitoring pipeline, and public ingress configuration.
+- `hamamooz-v1.2.1`: sidebar resource tree with separate infrastructure navigation icon.
 
 Cluster tokens are encrypted at rest and never returned by the API. Store `DJANGO_SECRET_KEY` and `KUBERNETES_TOKEN_ENCRYPTION_KEY` securely. Changing the encryption key after tokens are saved makes those values unreadable unless they are migrated.
