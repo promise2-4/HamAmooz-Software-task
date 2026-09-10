@@ -1,6 +1,7 @@
-import type { AppPayload, AppResource, Cluster, Namespace } from "../types";
+import type { AppPayload, AppResource, AuthUser, Cluster, Namespace, RegistrationPayload } from "../types";
 
 const AUTH_KEY = "hemmasian-basic-auth";
+const AUTH_USER_KEY = "hemmasian-auth-user";
 
 export class ApiError extends Error {
   status: number;
@@ -17,10 +18,26 @@ export function saveCredentials(username: string, password: string) {
 
 export function clearCredentials() {
   sessionStorage.removeItem(AUTH_KEY);
+  sessionStorage.removeItem(AUTH_USER_KEY);
 }
 
 export function hasCredentials() {
   return Boolean(sessionStorage.getItem(AUTH_KEY));
+}
+
+export function saveUser(user: AuthUser) {
+  sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+}
+
+export function loadUser(): AuthUser | null {
+  const value = sessionStorage.getItem(AUTH_USER_KEY);
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as AuthUser;
+  } catch {
+    sessionStorage.removeItem(AUTH_USER_KEY);
+    return null;
+  }
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -54,7 +71,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  verify: () => request<Cluster[]>("/api/clusters/"),
+  me: () => request<AuthUser>("/api/auth/me/"),
+  register: (payload: RegistrationPayload) =>
+    request<AuthUser>("/api/auth/register/", { method: "POST", body: JSON.stringify(payload) }),
   clusters: () => request<Cluster[]>("/api/clusters/"),
   cluster: (id: number) => request<Cluster>(`/api/clusters/${id}/`),
   namespaces: (clusterId: number) => request<Namespace[]>(`/api/namespaces/?cluster_id=${clusterId}`),

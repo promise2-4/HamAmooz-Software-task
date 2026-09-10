@@ -1,34 +1,45 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { api, clearCredentials, hasCredentials, saveCredentials } from "./api/client";
+import { api, clearCredentials, hasCredentials, loadUser, saveCredentials, saveUser } from "./api/client";
+import type { AuthUser, RegistrationPayload } from "./types";
 
 interface AuthContextValue {
   authenticated: boolean;
+  user: AuthUser | null;
+  isAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
+  register: (payload: RegistrationPayload) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authenticated, setAuthenticated] = useState(hasCredentials());
+  const [user, setUser] = useState<AuthUser | null>(() => loadUser());
+  const authenticated = hasCredentials() && user !== null;
 
   const login = async (username: string, password: string) => {
     saveCredentials(username, password);
     try {
-      await api.verify();
-      setAuthenticated(true);
+      const profile = await api.me();
+      saveUser(profile);
+      setUser(profile);
     } catch (error) {
       clearCredentials();
       throw error;
     }
   };
 
-  const logout = () => {
-    clearCredentials();
-    setAuthenticated(false);
+  const register = async (payload: RegistrationPayload) => {
+    await api.register(payload);
+    await login(payload.username, payload.password);
   };
 
-  return <AuthContext.Provider value={{ authenticated, login, logout }}>{children}</AuthContext.Provider>;
+  const logout = () => {
+    clearCredentials();
+    setUser(null);
+  };
+
+  return <AuthContext.Provider value={{ authenticated, user, isAdmin: Boolean(user?.is_staff), login, register, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

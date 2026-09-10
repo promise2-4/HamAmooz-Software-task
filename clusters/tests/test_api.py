@@ -14,7 +14,7 @@ from clusters.models import App, Cluster, Namespace
 class ClusterApiTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.user = get_user_model().objects.create_user("tester", password="secret")
+        self.user = get_user_model().objects.create_user("tester", password="secret", is_staff=True)
         self.client = APIClient()
         self.client.force_authenticate(self.user)
         self.cluster = Cluster(

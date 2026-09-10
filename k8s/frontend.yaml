@@ -22,7 +22,7 @@ spec:
         hamamooz.io/workload-node: "true"
       containers:
         - name: frontend
-          image: hemmasian-frontend:1.2.1
+          image: hemmasian-frontend:1.3.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -58,12 +58,14 @@ metadata:
     app.kubernetes.io/name: frontend
     app.kubernetes.io/part-of: hamamooz
 spec:
+  type: NodePort
   selector:
     app: frontend
   ports:
     - name: http
       port: 80
       targetPort: http
+      nodePort: 30080
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

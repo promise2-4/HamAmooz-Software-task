@@ -5,6 +5,7 @@ from django.http import JsonResponse
 
 from clusters.views import AppViewSet, ClusterViewSet, NamespaceViewSet
 from backups.views import BackupViewSet
+from config.auth_views import CurrentUserView, RegisterView
 
 
 router = DefaultRouter()
@@ -22,6 +23,8 @@ urlpatterns = [
     path("", include("django_prometheus.urls")),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
+    path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
+    path("api/auth/me/", CurrentUserView.as_view(), name="auth-me"),
     # Singular aliases match the assignment examples while plural REST routes remain available.
     path("api/namespace/", NamespaceViewSet.as_view({"get": "list", "post": "create"}), name="namespace-list"),
     path("api/namespace/<int:pk>/", NamespaceViewSet.as_view({"get": "retrieve", "delete": "destroy"}), name="namespace-detail"),

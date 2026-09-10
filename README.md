@@ -4,11 +4,11 @@ HamAmooz is a small Kubernetes management application built with Django REST Fra
 
 ## Deployment
 
-Version `hamamooz-v1.2.1` is deployed on the two-node Hemmasian K3s cluster.
+Version `hamamooz-v1.3.0` is deployed on the two-node Hemmasian K3s cluster.
 
 | Service | Address | Namespace |
 |---|---|---|
-| Web console and REST API | <http://app.hemmasian.osdl.ir> | `hemmasian` |
+| Web console and REST API | <http://hemmasian.osdl.ir:30080> | `hemmasian` |
 | Grafana | <http://grafana.hemmasian.osdl.ir> | `monitoring-hamamooz-task` |
 
 Both hostnames must resolve to the K3s ingress address. The current deployment uses HTTP, so TLS should be added before exposing it outside a trusted environment.
@@ -26,6 +26,8 @@ The application workloads are deliberately small: one backend replica, one front
 - Cache live workload status in Redis.
 - Use light or dark mode in the web console.
 - Follow cluster resources through the sidebar navigation tree.
+- Create viewer accounts through the public sign-up page.
+- Keep cluster changes restricted to staff and administrator accounts.
 - Collect Kubernetes and backup metrics through VictoriaMetrics.
 
 ## Architecture
@@ -63,20 +65,22 @@ All management endpoints require Django Basic or Session authentication.
 | `GET`, `POST` | `/api/apps/` | List or deploy applications |
 | `GET`, `PATCH`, `DELETE` | `/api/apps/{id}/` | Inspect, update, or delete an application |
 | `GET`, `POST` | `/api/backup/` | List, queue, or schedule backups |
+| `POST` | `/api/auth/register/` | Create a read-only viewer account |
+| `GET` | `/api/auth/me/` | Read the signed-in user and role |
 | `GET` | `/health/` | Backend health check |
 
 Namespace lists require a cluster filter:
 
 ```bash
 curl -u 'admin:password' \
-  'http://app.hemmasian.osdl.ir/api/namespaces/?cluster_id=1'
+  'http://hemmasian.osdl.ir:30080/api/namespaces/?cluster_id=1'
 ```
 
 Create a namespace:
 
 ```bash
 curl -u 'admin:password' \
-  -X POST http://app.hemmasian.osdl.ir/api/namespaces/ \
+  -X POST http://hemmasian.osdl.ir:30080/api/namespaces/ \
   -H 'Content-Type: application/json' \
   -d '{"cluster_id":1,"name":"demo-ns"}'
 ```
@@ -85,7 +89,7 @@ Create an application without consuming Pod capacity:
 
 ```bash
 curl -u 'admin:password' \
-  -X POST http://app.hemmasian.osdl.ir/api/apps/ \
+  -X POST http://hemmasian.osdl.ir:30080/api/apps/ \
   -H 'Content-Type: application/json' \
   -d '{
     "namespace": 1,
@@ -136,7 +140,7 @@ redis-exporter   1
 Check the public routes:
 
 ```bash
-curl http://app.hemmasian.osdl.ir/health/
+curl http://hemmasian.osdl.ir:30080/health/
 curl http://grafana.hemmasian.osdl.ir/api/health
 ```
 
@@ -194,9 +198,9 @@ Vite runs on port `5173` and proxies API calls to Django on port `8000`. Set `VI
 
 ## Release versions
 
-- Backend image: `hemmasian-backend:1.2.0`
-- Frontend image: `hemmasian-frontend:1.2.1`
+- Backend image: `hemmasian-backend:1.3.0`
+- Frontend image: `hemmasian-frontend:1.3.0`
 - Grafana: `12.1.1`
-- Release tag: `hamamooz-v1.2.1`
+- Release tag: `hamamooz-v1.3.0`
 
 Cluster tokens are encrypted at rest and are never returned by the API. Kubernetes, Django, Grafana, and encryption credentials are stored in Kubernetes Secrets and are not committed to the repository.

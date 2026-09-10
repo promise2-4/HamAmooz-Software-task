@@ -89,11 +89,12 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_PERMISSION_CLASSES": ["config.permissions.IsAuthenticatedReadOnlyOrAdmin"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
         "namespace_create": "10/minute",
         "app_create": "20/minute",
+        "registration": "5/hour",
     },
 }
 

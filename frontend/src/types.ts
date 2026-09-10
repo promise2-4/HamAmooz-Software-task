@@ -37,3 +37,17 @@ export interface AppPayload {
   cpu_request: string;
   memory_request: string;
 }
+
+export interface AuthUser {
+  username: string;
+  email: string;
+  is_staff: boolean;
+  role: "Administrator" | "Viewer";
+}
+
+export interface RegistrationPayload {
+  username: string;
+  email: string;
+  password: string;
+  password_confirm: string;
+}

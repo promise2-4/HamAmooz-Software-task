@@ -6,6 +6,7 @@ import { AppsPage } from "./pages/AppsPage";
 import { ClustersPage } from "./pages/ClustersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NamespacesPage } from "./pages/NamespacesPage";
+import { SignupPage } from "./pages/SignupPage";
 import { ThemeProvider } from "./theme";
 
 function ProtectedRoute() {
@@ -15,6 +16,7 @@ function ProtectedRoute() {
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/signup", element: <SignupPage /> },
   {
     element: <ProtectedRoute />,
     children: [{

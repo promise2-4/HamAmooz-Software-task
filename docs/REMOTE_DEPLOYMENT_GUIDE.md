@@ -80,22 +80,22 @@ The manifests use local versioned image names and `IfNotPresent`. Import both im
 ```bash
 docker buildx build \
   --platform linux/amd64 \
-  --tag hemmasian-backend:1.2.0 \
+  --tag hemmasian-backend:1.3.0 \
   --provenance=false \
-  --output type=oci,dest=/tmp/hemmasian-backend-1.2.0.tar \
+  --output type=oci,dest=/tmp/hemmasian-backend-1.3.0.tar \
   .
 
 docker buildx build \
   --platform linux/amd64 \
-  --tag hemmasian-frontend:1.1.0 \
+  --tag hemmasian-frontend:1.3.0 \
   --provenance=false \
-  --output type=oci,dest=/tmp/hemmasian-frontend-1.1.0.tar \
+  --output type=oci,dest=/tmp/hemmasian-frontend-1.3.0.tar \
   ./frontend
 
 for NODE in $CONTROL_PLANE $WORKER; do
-  scp /tmp/hemmasian-backend-1.2.0.tar /tmp/hemmasian-frontend-1.1.0.tar ubuntu@$NODE:/tmp/
+  scp /tmp/hemmasian-backend-1.3.0.tar /tmp/hemmasian-frontend-1.3.0.tar ubuntu@$NODE:/tmp/
   ssh ubuntu@$NODE \
-    'sudo k3s ctr images import /tmp/hemmasian-backend-1.2.0.tar && sudo k3s ctr images import /tmp/hemmasian-frontend-1.1.0.tar'
+    'sudo k3s ctr images import /tmp/hemmasian-backend-1.3.0.tar && sudo k3s ctr images import /tmp/hemmasian-frontend-1.3.0.tar'
 done
 ```
 
@@ -194,13 +194,13 @@ ssh ubuntu@$CONTROL_PLANE \
   'sudo k3s kubectl rollout status deployment/frontend -n hemmasian --timeout=120s'
 ```
 
-Add local hostnames on the Mac:
+The Frontend Service uses NodePort `30080`, so it can share the existing hostname without replacing the Memos route on port 80. Open this address from any device with network access:
 
 ```text
-94.101.187.131 app.hemmasian.osdl.ir grafana.hemmasian.osdl.ir
+http://hemmasian.osdl.ir:30080
 ```
 
-Then open `http://app.hemmasian.osdl.ir` and sign in with the Django administrator.
+The alternate domain `http://app.hemmasian.osdl.ir` also works through Ingress after its public DNS record is created. Administrators can change cluster resources; public registrations create read-only viewer accounts.
 
 ## 8. Install only the VictoriaMetrics Operator with Helm
 
@@ -320,7 +320,7 @@ Open `http://grafana.hemmasian.osdl.ir` and select **HamAmooz Task Metrics**. Gr
 
 ```bash
 curl -u 'admin:REPLACE_WITH_PASSWORD' \
-  -X POST http://app.hemmasian.osdl.ir/api/namespaces/ \
+  -X POST http://hemmasian.osdl.ir:30080/api/namespaces/ \
   -H 'Content-Type: application/json' \
   -d '{"cluster_id":1,"name":"deployment-proof"}'
 
@@ -328,7 +328,7 @@ ssh ubuntu@$CONTROL_PLANE \
   'sudo k3s kubectl get namespace deployment-proof'
 
 curl -u 'admin:REPLACE_WITH_PASSWORD' \
-  -X POST http://app.hemmasian.osdl.ir/api/apps/ \
+  -X POST http://hemmasian.osdl.ir:30080/api/apps/ \
   -H 'Content-Type: application/json' \
   -d '{"namespace":REPLACE_WITH_NAMESPACE_ID,"name":"proof-app","image":"nginx:1.27-alpine","replicas":0,"cpu_request":"25m","memory_request":"32Mi"}'
 

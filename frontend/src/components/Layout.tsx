@@ -4,7 +4,7 @@ import { useTheme } from "../theme";
 import { ArrowBackIcon, BoxIcon, ClusterIcon, DetailIcon, LayersIcon, LogoutIcon, MoonIcon, SunIcon, TopologyIcon } from "./Icons";
 
 export function Layout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export function Layout() {
         </nav>
         <div className="sidebar-note">
           <span className="signal"><i /></span>
-          <div><strong>Cluster workspace</strong><small>Backend API connected</small></div>
+          <div><strong>{user?.username ?? "Cluster workspace"}</strong><small>{user?.role ?? "Backend API connected"}</small></div>
         </div>
         <button className="nav-link logout" onClick={logout}><LogoutIcon /> Sign out</button>
       </aside>

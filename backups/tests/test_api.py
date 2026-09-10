@@ -29,7 +29,7 @@ def histogram_count(metric):
 @override_settings(KUBERNETES_TOKEN_ENCRYPTION_KEY=FERNET_KEY)
 class BackupApiTests(TestCase):
     def setUp(self):
-        user = get_user_model().objects.create_user("tester", password="secret")
+        user = get_user_model().objects.create_user("tester", password="secret", is_staff=True)
         self.client = APIClient()
         self.client.force_authenticate(user)
         cluster = Cluster(name="home-k3s", addr="https://94.101.187.131:6443")

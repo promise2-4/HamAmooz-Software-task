@@ -234,6 +234,11 @@ a.resource-card:hover { border-color: color-mix(in srgb, var(--blue) 35%, var(--
 .login-form h2 { margin: 5px 0 -8px; color: var(--navy); font-size: 28px; letter-spacing: -.035em; }
 .login-form > p { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
 .security-note { color: var(--muted); font-size: 9px; text-align: center; }
+.auth-switch { margin: -3px 0 0 !important; text-align: center; }
+.auth-switch a { color: var(--blue); font-weight: 700; }
+.auth-switch a:hover { color: var(--blue-dark); }
+.signup-form { gap: 13px; }
+.signup-form label small { display: inline; margin-left: 4px; color: var(--muted); font-size: 9px; font-weight: 400; }
 .login-theme-toggle { position: absolute; z-index: 3; top: 28px; right: 30px; }
 
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 30%, transparent); outline-offset: 2px; }
