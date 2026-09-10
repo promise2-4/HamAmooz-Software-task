@@ -1,110 +1,174 @@
 # HamAmooz Software Task
 
-A cluster-management application built with Django REST Framework and React. It registers Kubernetes clusters, creates and lists usable namespaces, deploys applications, and schedules backups. The local stack runs with Docker Compose and includes lightweight monitoring.
+HamAmooz is a small Kubernetes management application built with Django REST Framework and React. It registers clusters, manages usable namespaces, deploys container workloads, schedules backups, and exposes application metrics for VictoriaMetrics and Grafana.
 
-## Deployment status
+## Deployment
 
-This version has been validated locally and deployed to the two-node Hemmasian K3s cluster. The backend, frontend, Redis, Celery, VictoriaMetrics, VMAuth, and Grafana workloads are running with lightweight resource limits. The public ingress hosts are `app.hemmasian.osdl.ir` and `grafana.hemmasian.osdl.ir`; their DNS records must point to the control-plane address.
+Version `hamamooz-v1.2.1` is deployed on the two-node Hemmasian K3s cluster.
 
-## Components
-
-| Component | Address | Description |
+| Service | Address | Namespace |
 |---|---|---|
-| Web console | <http://localhost:8000> | React frontend served by Nginx |
-| REST API | <http://localhost:8000/api/> | Django API proxied through Nginx |
-| Health check | <http://localhost:8000/health/> | Backend health endpoint |
-| Grafana | <http://localhost:3000> | Provisioned monitoring dashboard |
-| Prometheus | <http://localhost:9090> | Metrics and target status |
+| Web console and REST API | <http://app.hemmasian.osdl.ir> | `hemmasian` |
+| Grafana | <http://grafana.hemmasian.osdl.ir> | `monitoring-hamamooz-task` |
 
-Redis, Celery Worker, and Celery Beat are internal services and are not exposed to the host.
+Both hostnames must resolve to the K3s ingress address. The current deployment uses HTTP, so TLS should be added before exposing it outside a trusted environment.
 
-## Quick start with Docker
+The application workloads are deliberately small: one backend replica, one frontend replica, Redis, one Celery worker, and one Celery Beat scheduler. Monitoring uses a single VMAgent and VMSingle instance with bounded storage and resource requests.
 
-Docker Desktop or Docker Engine with Docker Compose v2 is required.
+## Features
 
-```bash
-cp .env.example .env
-docker compose up --build -d
-docker compose exec backend python manage.py createsuperuser
+- Register a Kubernetes cluster with its API address and service-account token.
+- Verify cluster connectivity and report the Kubernetes version.
+- Create, list, and delete usable namespaces while hiding protected namespaces.
+- Create, inspect, update, and delete Kubernetes Deployments.
+- Keep test or inactive applications at zero replicas without removing their definitions.
+- Run or schedule application backups through Celery.
+- Cache live workload status in Redis.
+- Use light or dark mode in the web console.
+- Follow cluster resources through the sidebar navigation tree.
+- Collect Kubernetes and backup metrics through VictoriaMetrics.
+
+## Architecture
+
+```text
+Browser
+  |
+  v
+Traefik Ingress
+  |
+  +-- React + Nginx ---- /api and /health ----> Django API
+                                                   |
+                                                   +-- Kubernetes API
+                                                   +-- Redis
+                                                   +-- Celery Worker / Beat
+
+Django / Celery / Redis exporter
+  |
+  v
+VMAgent --> VMSingle --> VMAuth --> Grafana
 ```
 
-Open <http://localhost:8000> and sign in using the superuser. Initial Grafana credentials are `admin` / `admin`; change `GRAFANA_ADMIN_PASSWORD` in `.env` before any shared deployment.
+The public Nginx route does not expose `/metrics`. VMAgent collects metrics from internal Kubernetes Services, and Grafana reads them through authenticated VMAuth access.
 
-Check the stack:
+## API
 
-```bash
-docker compose ps
-curl http://localhost:8000/health/
-curl http://localhost:9090/-/healthy
-```
-
-View logs:
-
-```bash
-docker compose logs -f backend frontend
-docker compose logs -f prometheus grafana
-```
-
-Stop without deleting data:
-
-```bash
-docker compose down
-```
-
-Delete containers and local volumes only when their data is no longer needed:
-
-```bash
-docker compose down -v
-```
-
-## Monitoring
-
-Prometheus collects Django request/process metrics, Redis metrics, aggregate Docker VM CPU/memory metrics through cAdvisor, and its own metrics. Grafana is provisioned automatically with the Prometheus datasource and the **Hemmasian Overview** dashboard.
-
-Prometheus retention is limited to three days or 1 GB, and each service has a memory limit. Target health is available at <http://localhost:9090/targets>. On Docker Desktop, cAdvisor safely exposes aggregate metrics from Docker's Linux VM. Use `docker stats` when per-container CPU and memory detail is needed without granting a monitoring container access to the Docker socket.
-
-Prometheus scrapes raw Django metrics directly from the internal Backend service. The public Nginx route intentionally does not expose `/metrics`. To discover and test local metrics, open <http://localhost:9090/graph> and try names such as `django_http_requests_total_by_method_total`, `process_resident_memory_bytes`, `redis_connected_clients`, and `redis_memory_used_bytes`.
-
-Application-specific metrics cover Kubernetes operation outcomes and duration as well as backup outcomes, duration, and current concurrency. Django exposes Kubernetes metrics on `/metrics`; the Celery worker exposes backup metrics internally on port `9808`. Prometheus scrapes both. See [the VictoriaMetrics guide](docs/VICTORIAMETRICS_GUIDE.md) for the staged Kubernetes pipeline, capacity checks, secure iteration, VMUI, and Grafana queries.
-
-For the local Minikube pipeline, Grafana remains in Docker and joins Minikube's private Docker network. Apply `k8s/victoriametrics/03-local-nodeport.yaml` only to Minikube so the private `vmsingle-hamamooz-nodeport` service can carry queries without a long-running `kubectl port-forward`. Open <http://localhost:3000/d/hamamooz-task-metrics/hamamooz-task-metrics> for the five assignment metrics; its default time range is one hour.
-
-## API routes
-
-All API routes require Django Basic or Session authentication.
+All management endpoints require Django Basic or Session authentication.
 
 | Method | Path | Purpose |
 |---|---|---|
 | `GET`, `POST` | `/api/clusters/` | List or register clusters |
-| `GET` | `/api/clusters/{id}/connection/` | Test authenticated Kubernetes API connectivity |
-| `GET`, `POST` | `/api/namespaces/` | List or create tracked Kubernetes namespaces |
-| `DELETE` | `/api/namespaces/{id}/` | Delete a namespace |
+| `GET` | `/api/clusters/{id}/connection/` | Check Kubernetes connectivity |
+| `GET`, `POST` | `/api/namespaces/` | List or create namespaces |
+| `GET`, `DELETE` | `/api/namespaces/{id}/` | Read or delete a namespace |
 | `GET`, `POST` | `/api/apps/` | List or deploy applications |
-| `GET`, `PATCH`, `DELETE` | `/api/apps/{id}/` | Read, update, or delete an application |
+| `GET`, `PATCH`, `DELETE` | `/api/apps/{id}/` | Inspect, update, or delete an application |
 | `GET`, `POST` | `/api/backup/` | List, queue, or schedule backups |
+| `GET` | `/health/` | Backend health check |
 
-Example namespace request:
+Namespace lists require a cluster filter:
 
 ```bash
-curl -u admin:password -X POST http://localhost:8000/api/namespaces/ \
+curl -u 'admin:password' \
+  'http://app.hemmasian.osdl.ir/api/namespaces/?cluster_id=1'
+```
+
+Create a namespace:
+
+```bash
+curl -u 'admin:password' \
+  -X POST http://app.hemmasian.osdl.ir/api/namespaces/ \
   -H 'Content-Type: application/json' \
   -d '{"cluster_id":1,"name":"demo-ns"}'
 ```
 
-## Kubernetes access
-
-Docker Compose does not create a local Kubernetes cluster. Namespace and deployment operations are sent to the API address registered for each cluster, so Docker must be able to reach that address, normally `https://<control-plane-ip>:6443`.
-
-Apply the included RBAC manifest on the control-plane node and create a dedicated token:
+Create an application without consuming Pod capacity:
 
 ```bash
-sudo k3s kubectl apply -f k8s/cluster-api-rbac.yaml
-sudo k3s kubectl -n hemmasian create token cluster-api --duration=8760h
+curl -u 'admin:password' \
+  -X POST http://app.hemmasian.osdl.ir/api/apps/ \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "namespace": 1,
+    "name": "demo-app",
+    "image": "nginx:1.27-alpine",
+    "replicas": 0,
+    "cpu_request": "25m",
+    "memory_request": "32Mi"
+  }'
 ```
 
-Register the address and token through `/api/clusters/`. Keep TLS verification enabled and configure the cluster CA in production; disabling it is intended only for a trusted development environment.
+## Application metrics
 
-## Development and tests
+Django and Celery expose the assignment metrics below:
+
+| Metric | Type | Purpose |
+|---|---|---|
+| `hamamooz_kubernetes_operations_total` | Counter | Kubernetes operation outcomes |
+| `hamamooz_kubernetes_operation_duration_seconds` | Histogram | Kubernetes operation duration |
+| `hamamooz_backup_jobs_total` | Counter | Completed and failed backup jobs |
+| `hamamooz_backup_duration_seconds` | Histogram | Backup execution duration |
+| `hamamooz_backups_in_progress` | Gauge | Backup jobs currently running |
+
+Kubernetes metrics use the `resource`, `operation`, and `outcome` labels. Backup counters and histograms use the terminal `outcome` label.
+
+The VictoriaMetrics operator manages `VMAgent`, `VMSingle`, `VMAuth`, `VMUser`, and `VMServiceScrape` resources. The Grafana dashboard **HamAmooz Task Metrics** contains twelve panels for target health, Kubernetes operations, latency, backup outcomes, duration, and current backup concurrency.
+
+## Verify the remote deployment
+
+Use a kubeconfig for the Hemmasian cluster, then run:
+
+```bash
+kubectl get nodes -o wide
+kubectl get pods,svc,ingress -n hemmasian
+kubectl get pods,svc,pvc -n monitoring-hamamooz-task
+kubectl get vmsingle,vmagent,vmauth,vmuser,vmservicescrape \
+  -n monitoring-hamamooz-task
+```
+
+Expected target health:
+
+```text
+backend-metrics  1
+celery-metrics   1
+redis-exporter   1
+```
+
+Check the public routes:
+
+```bash
+curl http://app.hemmasian.osdl.ir/health/
+curl http://grafana.hemmasian.osdl.ir/api/health
+```
+
+The complete deployment procedure, credential creation, image import, VictoriaMetrics installation, and verification queries are documented in [docs/REMOTE_DEPLOYMENT_GUIDE.md](docs/REMOTE_DEPLOYMENT_GUIDE.md).
+
+## Run locally with Docker
+
+Docker Compose provides the backend, frontend, Redis, Celery, Prometheus, and Grafana development stack.
+
+```bash
+docker compose up --build -d
+docker compose exec backend python manage.py createsuperuser
+```
+
+Local addresses:
+
+- Web console: <http://localhost:8000>
+- REST API: <http://localhost:8000/api/>
+- Grafana: <http://localhost:3000>
+- Prometheus: <http://localhost:9090>
+
+Check or stop the stack:
+
+```bash
+docker compose ps
+curl http://localhost:8000/health/
+docker compose down
+```
+
+Docker Compose uses development defaults when secrets are not supplied. Set `DJANGO_SECRET_KEY`, `KUBERNETES_TOKEN_ENCRYPTION_KEY`, and `GRAFANA_ADMIN_PASSWORD` through the environment before using a shared machine.
+
+## Development
 
 Backend:
 
@@ -123,22 +187,16 @@ Frontend:
 cd frontend
 npm ci
 npm run dev
+npm run build
 ```
 
-Vite runs on port `5173` and proxies API calls to Django on port `8000`. Override it with `VITE_API_TARGET` when needed.
+Vite runs on port `5173` and proxies API calls to Django on port `8000`. Set `VITE_API_TARGET` to use another backend address.
 
-The direct runtime dependency inventory is documented in [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md). Backend and frontend dependency versions are pinned to the versions used by the passing validation suite.
+## Release versions
 
-## Version tags
+- Backend image: `hemmasian-backend:1.2.0`
+- Frontend image: `hemmasian-frontend:1.2.1`
+- Grafana: `12.1.1`
+- Release tag: `hamamooz-v1.2.1`
 
-- `backend-v1.0.0`: Django API, Kubernetes integration, backups, Redis, and Celery.
-- `frontend-v1.0.0`: React management console.
-- `docker-monitoring-v1.0.0`: complete Docker Compose stack with Prometheus and Grafana.
-- `monitoring-victoriametrics-v1.0.0`: VictoriaMetrics operator pipeline and assignment dashboard.
-- `backend-v1.2.0`: deployment-ready API with TLS-verified Kubernetes access and Redis status caching.
-- `frontend-v1.1.0`: lightweight Kubernetes deployment for the management console.
-- `monitoring-victoriametrics-v1.1.0`: authenticated VMAuth pipeline and provisioned Grafana dashboard.
-- `hamamooz-v1.2.0`: verified K3s release with the updated frontend theme, navigation, monitoring pipeline, and public ingress configuration.
-- `hamamooz-v1.2.1`: sidebar resource tree with separate infrastructure navigation icon.
-
-Cluster tokens are encrypted at rest and never returned by the API. Store `DJANGO_SECRET_KEY` and `KUBERNETES_TOKEN_ENCRYPTION_KEY` securely. Changing the encryption key after tokens are saved makes those values unreadable unless they are migrated.
+Cluster tokens are encrypted at rest and are never returned by the API. Kubernetes, Django, Grafana, and encryption credentials are stored in Kubernetes Secrets and are not committed to the repository.
