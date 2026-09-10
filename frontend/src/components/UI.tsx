@@ -14,7 +14,7 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 export function PageLoader({ label = "Loading resources" }: { label?: string }) {
-  return <div className="state-card"><span className="spinner" /><h3>{label}</h3><p>Fetching the latest information from the backend.</p></div>;
+  return <div className="state-card loading-state" role="status" aria-live="polite"><div className="cluster-loader" aria-hidden="true"><span className="loader-core" /><span className="loader-node node-one" /><span className="loader-node node-two" /><span className="loader-node node-three" /></div><h3>{label}</h3><p>Connecting to the cluster and collecting the latest resources.</p><div className="loading-steps" aria-hidden="true"><i /><i /><i /></div></div>;
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {

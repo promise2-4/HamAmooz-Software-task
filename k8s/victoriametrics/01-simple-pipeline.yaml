@@ -65,3 +65,9 @@ spec:
       path: /metrics
       interval: 15s
       scrapeTimeout: 10s
+      relabelConfigs:
+        - sourceLabels:
+            - __meta_kubernetes_service_name
+          regex: backend-metrics
+          targetLabel: __address__
+          replacement: backend-metrics.hemmasian.svc:8000

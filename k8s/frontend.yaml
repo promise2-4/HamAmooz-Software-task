@@ -22,7 +22,7 @@ spec:
         hamamooz.io/workload-node: "true"
       containers:
         - name: frontend
-          image: hemmasian-frontend:1.1.0
+          image: hemmasian-frontend:1.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -76,7 +76,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: hemmasian
+    - host: app.hemmasian.osdl.ir
       http:
         paths:
           - path: /

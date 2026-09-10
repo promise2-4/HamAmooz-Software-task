@@ -10,7 +10,7 @@ metadata:
   namespace: hemmasian
 data:
   DJANGO_DEBUG: "false"
-  DJANGO_ALLOWED_HOSTS: "hemmasian,backend,localhost,127.0.0.1"
+  DJANGO_ALLOWED_HOSTS: "app.hemmasian.osdl.ir,hemmasian,backend,backend-metrics.hemmasian.svc,localhost,127.0.0.1"
   DATABASE_PATH: "/data/db.sqlite3"
   BACKUP_ROOT: "/backups"
   CELERY_BROKER_URL: "redis://redis:6379/0"

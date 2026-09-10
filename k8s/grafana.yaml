@@ -93,15 +93,21 @@ spec:
                   key: password
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
+            - name: GF_SERVER_DOMAIN
+              value: grafana.hemmasian.osdl.ir
+            - name: GF_SERVER_ROOT_URL
+              value: http://grafana.hemmasian.osdl.ir
+            - name: GF_PLUGINS_PREINSTALL_DISABLED
+              value: "true"
             - name: VM_READER_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: vmuser-hamamooz-reader
+                  name: vmauth-reader-credentials
                   key: username
             - name: VM_READER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: vmuser-hamamooz-reader
+                  name: vmauth-reader-credentials
                   key: password
           ports:
             - name: http
@@ -177,7 +183,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: grafana.hemmasian
+    - host: grafana.hemmasian.osdl.ir
       http:
         paths:
           - path: /

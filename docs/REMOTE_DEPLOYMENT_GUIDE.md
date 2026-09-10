@@ -197,10 +197,10 @@ ssh ubuntu@$CONTROL_PLANE \
 Add local hostnames on the Mac:
 
 ```text
-94.101.187.131 hemmasian grafana.hemmasian
+94.101.187.131 app.hemmasian.osdl.ir grafana.hemmasian.osdl.ir
 ```
 
-Then open `http://hemmasian` and sign in with the Django administrator.
+Then open `http://app.hemmasian.osdl.ir` and sign in with the Django administrator.
 
 ## 8. Install only the VictoriaMetrics Operator with Helm
 
@@ -267,7 +267,18 @@ curl -G http://127.0.0.1:8428/api/v1/query \
   --data-urlencode 'query=sum by(resource,operation,outcome)(hamamooz_kubernetes_operations_total)'
 ```
 
-After the simple path works, add authenticated read access. The operator creates the `vmuser-hamamooz-reader` Secret used by Grafana:
+After the simple path works, create a dedicated credential Secret and add authenticated read access. Keeping the generated password outside the manifest avoids committing it to Git, while the explicit Secret gives VMAuth and Grafana one stable source of credentials:
+
+```bash
+VM_READER_PASSWORD="$(openssl rand -base64 24 | tr -d '\n')"
+
+kubectl -n monitoring-hamamooz-task create secret generic vmauth-reader-credentials \
+  --from-literal=username=hamamooz-reader \
+  --from-literal=password="$VM_READER_PASSWORD" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+unset VM_READER_PASSWORD
+```
 
 ```bash
 kubectl apply --dry-run=server -f k8s/victoriametrics/02-secure-access.yaml
@@ -303,13 +314,13 @@ kubectl -n monitoring-hamamooz-task rollout status deployment/grafana --timeout=
 kubectl -n monitoring-hamamooz-task get pods,svc,pvc -o wide
 ```
 
-Open `http://grafana.hemmasian` and select **HamAmooz Task Metrics**. Grafana now queries VMSingle through VMAuth rather than bypassing authentication.
+Open `http://grafana.hemmasian.osdl.ir` and select **HamAmooz Task Metrics**. Grafana now queries VMSingle through VMAuth rather than bypassing authentication.
 
 ## 10. Prove namespace, App, and metric behavior
 
 ```bash
 curl -u 'admin:REPLACE_WITH_PASSWORD' \
-  -X POST http://hemmasian/api/namespaces/ \
+  -X POST http://app.hemmasian.osdl.ir/api/namespaces/ \
   -H 'Content-Type: application/json' \
   -d '{"cluster_id":1,"name":"deployment-proof"}'
 
@@ -317,7 +328,7 @@ ssh ubuntu@$CONTROL_PLANE \
   'sudo k3s kubectl get namespace deployment-proof'
 
 curl -u 'admin:REPLACE_WITH_PASSWORD' \
-  -X POST http://hemmasian/api/apps/ \
+  -X POST http://app.hemmasian.osdl.ir/api/apps/ \
   -H 'Content-Type: application/json' \
   -d '{"namespace":REPLACE_WITH_NAMESPACE_ID,"name":"proof-app","image":"nginx:1.27-alpine","replicas":0,"cpu_request":"25m","memory_request":"32Mi"}'
 
@@ -347,8 +358,8 @@ kubectl -n monitoring-hamamooz-task port-forward service/vmauth-hamamooz 8427:84
 In another terminal:
 
 ```bash
-export VM_READER_USERNAME="$(kubectl -n monitoring-hamamooz-task get secret vmuser-hamamooz-reader -o jsonpath='{.data.username}' | base64 -d)"
-export VM_READER_PASSWORD="$(kubectl -n monitoring-hamamooz-task get secret vmuser-hamamooz-reader -o jsonpath='{.data.password}' | base64 -d)"
+export VM_READER_USERNAME="$(kubectl -n monitoring-hamamooz-task get secret vmauth-reader-credentials -o jsonpath='{.data.username}' | base64 -d)"
+export VM_READER_PASSWORD="$(kubectl -n monitoring-hamamooz-task get secret vmauth-reader-credentials -o jsonpath='{.data.password}' | base64 -d)"
 
 curl -u "$VM_READER_USERNAME:$VM_READER_PASSWORD" \
   -G http://127.0.0.1:8427/api/v1/query \

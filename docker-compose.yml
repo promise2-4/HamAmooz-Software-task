@@ -88,10 +88,10 @@ services:
   frontend:
     build:
       context: ./frontend
-    image: hemmasian-frontend:1.1.0
+    image: hemmasian-frontend:1.2.0
     labels:
       com.hamamooz.component: frontend
-      com.hamamooz.version: 1.1.0
+      com.hamamooz.version: 1.2.0
     ports:
       - "8000:80"
     depends_on:

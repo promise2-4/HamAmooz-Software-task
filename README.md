@@ -4,7 +4,7 @@ A cluster-management application built with Django REST Framework and React. It 
 
 ## Deployment status
 
-This version has been validated locally with Docker Desktop and Minikube. The remote K3s cluster has been audited read-only, but this version has not yet been deployed there. Follow the [remote deployment guide](docs/REMOTE_DEPLOYMENT_GUIDE.md) after reviewing the [deployment checklist](docs/DEPLOYMENT_CHECKLIST.md).
+This version has been validated locally and deployed to the two-node Hemmasian K3s cluster. The backend, frontend, Redis, Celery, VictoriaMetrics, VMAuth, and Grafana workloads are running with lightweight resource limits. The public ingress hosts are `app.hemmasian.osdl.ir` and `grafana.hemmasian.osdl.ir`; their DNS records must point to the control-plane address.
 
 ## Components
 
@@ -138,5 +138,6 @@ The direct runtime dependency inventory is documented in [docs/DEPENDENCIES.md](
 - `backend-v1.2.0`: deployment-ready API with TLS-verified Kubernetes access and Redis status caching.
 - `frontend-v1.1.0`: lightweight Kubernetes deployment for the management console.
 - `monitoring-victoriametrics-v1.1.0`: authenticated VMAuth pipeline and provisioned Grafana dashboard.
+- `hamamooz-v1.2.0`: verified K3s release with the updated frontend theme, navigation, monitoring pipeline, and public ingress configuration.
 
 Cluster tokens are encrypted at rest and never returned by the API. Store `DJANGO_SECRET_KEY` and `KUBERNETES_TOKEN_ENCRYPTION_KEY` securely. Changing the encryption key after tokens are saved makes those values unreadable unless they are migrated.

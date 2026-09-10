@@ -6,6 +6,7 @@ import { AppsPage } from "./pages/AppsPage";
 import { ClustersPage } from "./pages/ClustersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NamespacesPage } from "./pages/NamespacesPage";
+import { ThemeProvider } from "./theme";
 
 function ProtectedRoute() {
   const { authenticated } = useAuth();
@@ -30,5 +31,5 @@ const router = createBrowserRouter([
 ]);
 
 export function App() {
-  return <RouterProvider router={router} />;
+  return <ThemeProvider><RouterProvider router={router} /></ThemeProvider>;
 }

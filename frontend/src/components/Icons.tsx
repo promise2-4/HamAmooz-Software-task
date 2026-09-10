@@ -21,3 +21,6 @@ export const RefreshIcon = (props: IconProps) => <IconBase {...props}><path d="M
 export const ChevronIcon = (props: IconProps) => <IconBase {...props}><path d="m9 18 6-6-6-6" /></IconBase>;
 export const LogoutIcon = (props: IconProps) => <IconBase {...props}><path d="M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" /></IconBase>;
 export const AlertIcon = (props: IconProps) => <IconBase {...props}><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.8 2.8 17a2 2 0 0 0 1.8 3h14.8a2 2 0 0 0 1.8-3L13.7 3.8a2 2 0 0 0-3.4 0Z" /></IconBase>;
+export const ArrowBackIcon = (props: IconProps) => <IconBase {...props}><path d="m15 18-6-6 6-6M9 12h11" /></IconBase>;
+export const SunIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" /></IconBase>;
+export const MoonIcon = (props: IconProps) => <IconBase {...props}><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8Z" /></IconBase>;

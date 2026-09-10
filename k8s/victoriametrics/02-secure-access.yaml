@@ -30,7 +30,9 @@ metadata:
     access: hamamooz
 spec:
   username: hamamooz-reader
-  generatePassword: true
+  passwordRef:
+    name: vmauth-reader-credentials
+    key: password
   targetRefs:
     - crd:
         kind: VMSingle

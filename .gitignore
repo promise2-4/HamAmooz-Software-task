@@ -10,3 +10,4 @@ frontend/dist/
 frontend/*.tsbuildinfo
 .DS_Store
 *.log
+*.tar.gz
