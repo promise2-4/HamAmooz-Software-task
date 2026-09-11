@@ -1,4 +1,9 @@
-import { Navigate, Outlet, RouterProvider, createBrowserRouter } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  RouterProvider,
+  createBrowserRouter,
+} from "react-router-dom";
 import { useAuth } from "./auth";
 import { Layout } from "./components/Layout";
 import { AppDetailPage } from "./pages/AppDetailPage";
@@ -19,19 +24,31 @@ const router = createBrowserRouter([
   { path: "/signup", element: <SignupPage /> },
   {
     element: <ProtectedRoute />,
-    children: [{
-      element: <Layout />,
-      children: [
-        { path: "/clusters", element: <ClustersPage /> },
-        { path: "/clusters/:clusterId/namespaces", element: <NamespacesPage /> },
-        { path: "/clusters/:clusterId/namespaces/:namespaceId", element: <AppsPage /> },
-        { path: "/apps/:appId", element: <AppDetailPage /> },
-      ],
-    }],
+    children: [
+      {
+        element: <Layout />,
+        children: [
+          { path: "/clusters", element: <ClustersPage /> },
+          {
+            path: "/clusters/:clusterId/namespaces",
+            element: <NamespacesPage />,
+          },
+          {
+            path: "/clusters/:clusterId/namespaces/:namespaceId",
+            element: <AppsPage />,
+          },
+          { path: "/apps/:appId", element: <AppDetailPage /> },
+        ],
+      },
+    ],
   },
   { path: "*", element: <Navigate to="/clusters" replace /> },
 ]);
 
 export function App() {
-  return <ThemeProvider><RouterProvider router={router} /></ThemeProvider>;
+  return (
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
+  );
 }

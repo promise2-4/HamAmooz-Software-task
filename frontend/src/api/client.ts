@@ -1,4 +1,11 @@
-import type { AppPayload, AppResource, AuthUser, Cluster, Namespace, RegistrationPayload } from "../types";
+import type {
+  AppPayload,
+  AppResource,
+  AuthUser,
+  Cluster,
+  Namespace,
+  RegistrationPayload,
+} from "../types";
 
 const AUTH_KEY = "hemmasian-basic-auth";
 const AUTH_USER_KEY = "hemmasian-auth-user";
@@ -55,7 +62,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       signal: options.signal ?? AbortSignal.timeout(15_000),
     });
   } catch (error) {
-    if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) {
+    if (
+      error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
       throw new ApiError("The backend did not respond within 15 seconds.", 504);
     }
     throw new ApiError("Could not connect to the backend.", 503);
@@ -64,7 +74,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = body.detail || Object.values(body).flat().join(" ") || "The request could not be completed.";
+    const message =
+      body.detail ||
+      Object.values(body).flat().join(" ") ||
+      "The request could not be completed.";
     throw new ApiError(String(message), response.status);
   }
   return body as T;
@@ -73,22 +86,35 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   me: () => request<AuthUser>("/api/auth/me/"),
   register: (payload: RegistrationPayload) =>
-    request<AuthUser>("/api/auth/register/", { method: "POST", body: JSON.stringify(payload) }),
+    request<AuthUser>("/api/auth/register/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   clusters: () => request<Cluster[]>("/api/clusters/"),
   cluster: (id: number) => request<Cluster>(`/api/clusters/${id}/`),
-  namespaces: (clusterId: number) => request<Namespace[]>(`/api/namespaces/?cluster_id=${clusterId}`),
+  namespaces: (clusterId: number) =>
+    request<Namespace[]>(`/api/namespaces/?cluster_id=${clusterId}`),
   namespace: (id: number) => request<Namespace>(`/api/namespaces/${id}/`),
   createNamespace: (clusterId: number, name: string) =>
     request<Namespace>("/api/namespaces/", {
       method: "POST",
       body: JSON.stringify({ cluster_id: clusterId, name }),
     }),
-  deleteNamespace: (id: number) => request<void>(`/api/namespaces/${id}/`, { method: "DELETE" }),
-  apps: (namespaceId: number) => request<AppResource[]>(`/api/apps/?namespace_id=${namespaceId}`),
+  deleteNamespace: (id: number) =>
+    request<void>(`/api/namespaces/${id}/`, { method: "DELETE" }),
+  apps: (namespaceId: number) =>
+    request<AppResource[]>(`/api/apps/?namespace_id=${namespaceId}`),
   app: (id: number) => request<AppResource>(`/api/apps/${id}/`),
   createApp: (payload: AppPayload) =>
-    request<AppResource>("/api/apps/", { method: "POST", body: JSON.stringify(payload) }),
+    request<AppResource>("/api/apps/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   updateApp: (id: number, payload: AppPayload) =>
-    request<AppResource>(`/api/apps/${id}/`, { method: "PATCH", body: JSON.stringify(payload) }),
-  deleteApp: (id: number) => request<void>(`/api/apps/${id}/`, { method: "DELETE" }),
+    request<AppResource>(`/api/apps/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  deleteApp: (id: number) =>
+    request<void>(`/api/apps/${id}/`, { method: "DELETE" }),
 };

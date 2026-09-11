@@ -22,8 +22,8 @@ spec:
         hamamooz.io/workload-node: "true"
       containers:
         - name: frontend
-          image: hemmasian-frontend:1.3.0
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/promise2-4/hamamooz-software-task/frontend:hamamooz-v1.4.0
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 80

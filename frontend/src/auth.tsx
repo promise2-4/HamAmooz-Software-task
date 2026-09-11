@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { api, clearCredentials, hasCredentials, loadUser, saveCredentials, saveUser } from "./api/client";
+import {
+  api,
+  clearCredentials,
+  hasCredentials,
+  loadUser,
+  saveCredentials,
+  saveUser,
+} from "./api/client";
+import { clearQuerySession } from "./queryClient";
 import type { AuthUser, RegistrationPayload } from "./types";
 
 interface AuthContextValue {
@@ -35,11 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    clearQuerySession();
     clearCredentials();
     setUser(null);
   };
 
-  return <AuthContext.Provider value={{ authenticated, user, isAdmin: Boolean(user?.is_staff), login, register, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        authenticated,
+        user,
+        isAdmin: Boolean(user?.is_staff),
+        login,
+        register,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

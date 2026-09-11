@@ -73,9 +73,9 @@ ssh ubuntu@$CONTROL_PLANE \
   'sudo k3s kubectl label node hemmasian-ha1 hamamooz.io/workload-node=true --overwrite'
 ```
 
-## 4. Build small amd64 images and import them
+## 4. Build the backend image and publish the frontend image
 
-The manifests use local versioned image names and `IfNotPresent`. Import both images to both nodes so a later placement change does not cause an image pull failure.
+The backend currently uses a local versioned image. Import it to both nodes so a later placement change does not cause an image pull failure.
 
 ```bash
 docker buildx build \
@@ -85,25 +85,25 @@ docker buildx build \
   --output type=oci,dest=/tmp/hemmasian-backend-1.3.0.tar \
   .
 
-docker buildx build \
-  --platform linux/amd64 \
-  --tag hemmasian-frontend:1.3.0 \
-  --provenance=false \
-  --output type=oci,dest=/tmp/hemmasian-frontend-1.3.0.tar \
-  ./frontend
-
 for NODE in $CONTROL_PLANE $WORKER; do
-  scp /tmp/hemmasian-backend-1.3.0.tar /tmp/hemmasian-frontend-1.3.0.tar ubuntu@$NODE:/tmp/
+  scp /tmp/hemmasian-backend-1.3.0.tar ubuntu@$NODE:/tmp/
   ssh ubuntu@$NODE \
-    'sudo k3s ctr images import /tmp/hemmasian-backend-1.3.0.tar && sudo k3s ctr images import /tmp/hemmasian-frontend-1.3.0.tar'
+    'sudo k3s ctr images import /tmp/hemmasian-backend-1.3.0.tar'
 done
+```
+
+The frontend is built for `linux/amd64` by `.github/workflows/frontend-image.yml`. Push the release tag and make the generated GHCR package public before applying `k8s/frontend.yaml`:
+
+```bash
+git push origin main
+git push origin hamamooz-v1.4.0
 ```
 
 Verify the images without printing credentials:
 
 ```bash
 for NODE in $CONTROL_PLANE $WORKER; do
-  ssh ubuntu@$NODE "sudo k3s ctr images list | grep -E 'hemmasian-(backend|frontend)'"
+  ssh ubuntu@$NODE "sudo k3s ctr images list | grep 'hemmasian-backend'"
 done
 ```
 
