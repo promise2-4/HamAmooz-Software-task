@@ -12,6 +12,7 @@ import { useAutoRefresh } from "../autoRefresh";
 import { AppForm } from "../components/AppForm";
 import { BoxIcon, EditIcon, RefreshIcon, TrashIcon } from "../components/Icons";
 import {
+  AutoRefreshControl,
   ConfirmDialog,
   ErrorState,
   Metric,
@@ -181,6 +182,7 @@ export function AppDetailPage() {
         >
           <RefreshIcon /> {isRefreshing ? "Refreshing..." : "Refresh status"}
         </button>
+        <AutoRefreshControl />
         {isAdmin && (
           <button className="button secondary" onClick={() => setEditing(true)}>
             <EditIcon /> Edit settings

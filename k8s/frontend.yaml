@@ -22,7 +22,7 @@ spec:
         hamamooz.io/workload-node: "true"
       containers:
         - name: frontend
-          image: ghcr.io/promise2-4/hamamooz-software-task/frontend:hamamooz-v1.4.0
+          image: ghcr.io/promise2-4/hamamooz-software-task/frontend:hamamooz-v1.4.1
           imagePullPolicy: Always
           ports:
             - name: http

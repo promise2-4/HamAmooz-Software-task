@@ -4,7 +4,7 @@ HamAmooz is a small Kubernetes management application built with Django REST Fra
 
 ## Deployment
 
-The deployment manifests target version `hamamooz-v1.4.0` on the two-node Hemmasian K3s cluster.
+The deployment manifests target version `hamamooz-v1.4.1` on the two-node Hemmasian K3s cluster.
 
 | Service | Address | Namespace |
 |---|---|---|
@@ -201,8 +201,8 @@ Vite runs on port `5173` and proxies API calls to Django on port `8000`. Set `VI
 ## Release versions
 
 - Backend image: `hemmasian-backend:1.3.0`
-- Frontend image: `ghcr.io/promise2-4/hamamooz-software-task/frontend:hamamooz-v1.4.0`
+- Frontend image: `ghcr.io/promise2-4/hamamooz-software-task/frontend:hamamooz-v1.4.1`
 - Grafana: `12.1.1`
-- Release tag: `hamamooz-v1.4.0`
+- Release tag: `hamamooz-v1.4.1`
 
 Cluster tokens are encrypted at rest and are never returned by the API. Kubernetes, Django, Grafana, and encryption credentials are stored in Kubernetes Secrets and are not committed to the repository.

@@ -5,7 +5,6 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { useAutoRefresh, type AutoRefreshInterval } from "../autoRefresh";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
 import {
@@ -16,14 +15,12 @@ import {
   LayersIcon,
   LogoutIcon,
   MoonIcon,
-  RefreshIcon,
   SunIcon,
   TopologyIcon,
 } from "./Icons";
 
 export function Layout() {
   const { logout, user } = useAuth();
-  const { interval, setInterval } = useAutoRefresh();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -145,25 +142,6 @@ export function Layout() {
             <ArrowBackIcon /> <span>Back</span>
           </button>
           <div className="toolbar-actions">
-            <label className="refresh-control">
-              <RefreshIcon />
-              <span>Auto refresh</span>
-              <select
-                value={interval || 0}
-                onChange={(event) =>
-                  setInterval(
-                    (Number(event.target.value) ||
-                      false) as AutoRefreshInterval,
-                  )
-                }
-                aria-label="Auto refresh interval"
-              >
-                <option value={0}>Off</option>
-                <option value={15_000}>15s</option>
-                <option value={30_000}>30s</option>
-                <option value={60_000}>60s</option>
-              </select>
-            </label>
             <button
               className="toolbar-button theme-toggle"
               onClick={toggleTheme}

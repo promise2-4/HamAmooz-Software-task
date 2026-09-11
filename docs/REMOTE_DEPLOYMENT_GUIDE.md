@@ -96,7 +96,7 @@ The frontend is built for `linux/amd64` by `.github/workflows/frontend-image.yml
 
 ```bash
 git push origin main
-git push origin hamamooz-v1.4.0
+git push origin hamamooz-v1.4.1
 ```
 
 Verify the images without printing credentials:

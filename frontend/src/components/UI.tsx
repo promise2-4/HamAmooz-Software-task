@@ -1,5 +1,31 @@
 import { useEffect, type FormEvent, type ReactNode } from "react";
-import { AlertIcon } from "./Icons";
+import { useAutoRefresh, type AutoRefreshInterval } from "../autoRefresh";
+import { AlertIcon, RefreshIcon } from "./Icons";
+
+export function AutoRefreshControl() {
+  const { interval, setInterval } = useAutoRefresh();
+
+  return (
+    <label className="refresh-control">
+      <RefreshIcon />
+      <span>Auto refresh</span>
+      <select
+        value={interval || 0}
+        onChange={(event) =>
+          setInterval(
+            (Number(event.target.value) || false) as AutoRefreshInterval,
+          )
+        }
+        aria-label="Auto refresh interval"
+      >
+        <option value={0}>Off</option>
+        <option value={15_000}>15s</option>
+        <option value={30_000}>30s</option>
+        <option value={60_000}>60s</option>
+      </select>
+    </label>
+  );
+}
 
 export function StatusBadge({ status }: { status: string }) {
   const normalized = status.toLowerCase().replaceAll(" ", "-");

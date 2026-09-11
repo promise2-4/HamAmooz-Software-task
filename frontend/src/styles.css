@@ -26,6 +26,7 @@
   --text: #162033;
   --text-strong: #101b2d;
   --shadow: rgba(18, 34, 57, 0.06);
+  --pattern-dot: rgba(37, 99, 235, 0.08);
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
@@ -49,6 +50,7 @@
   --text: #dce5f2;
   --text-strong: #f4f8ff;
   --shadow: rgba(0, 0, 0, 0.25);
+  --pattern-dot: rgba(96, 165, 250, 0.1);
 }
 
 * {
@@ -248,11 +250,20 @@ svg {
 }
 .main-content {
   position: relative;
-  background: radial-gradient(
-    circle at 90% 0,
-    rgba(37, 99, 235, 0.055),
-    transparent 28%
-  );
+  background-color: var(--page-bg);
+  background-image:
+    radial-gradient(
+      circle at 90% 0,
+      rgba(37, 99, 235, 0.055),
+      transparent 28%
+    ),
+    radial-gradient(circle, var(--pattern-dot) 0.8px, transparent 0.9px);
+  background-position:
+    center,
+    0 0;
+  background-size:
+    auto,
+    24px 24px;
 }
 .workspace-toolbar {
   max-width: 1280px;

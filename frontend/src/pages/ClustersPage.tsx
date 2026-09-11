@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { useAutoRefresh } from "../autoRefresh";
 import { ArrowIcon, ClusterIcon, RefreshIcon } from "../components/Icons";
 import {
+  AutoRefreshControl,
   EmptyState,
   ErrorState,
   PageLoader,
@@ -50,13 +51,16 @@ export function ClustersPage() {
           <h1>Clusters</h1>
           <p>Select a cluster to inspect its namespaces and applications.</p>
         </div>
-        <button
-          className="button secondary"
-          onClick={() => void refresh()}
-          disabled={isRefreshing}
-        >
-          <RefreshIcon /> {isRefreshing ? "Refreshing..." : "Refresh"}
-        </button>
+        <div className="header-actions">
+          <button
+            className="button secondary"
+            onClick={() => void refresh()}
+            disabled={isRefreshing}
+          >
+            <RefreshIcon /> {isRefreshing ? "Refreshing..." : "Refresh"}
+          </button>
+          <AutoRefreshControl />
+        </div>
       </header>
 
       <section className="summary-strip">

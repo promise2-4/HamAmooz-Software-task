@@ -13,6 +13,7 @@ import {
   TrashIcon,
 } from "../components/Icons";
 import {
+  AutoRefreshControl,
   ConfirmDialog,
   EmptyState,
   ErrorState,
@@ -140,6 +141,7 @@ export function AppsPage() {
           >
             <RefreshIcon /> {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
+          <AutoRefreshControl />
           {isAdmin && (
             <button
               className="button primary"
